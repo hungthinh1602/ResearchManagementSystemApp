@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { InputFieldProps } from './Types';
+import { InputFieldProps } from './types';
 
 export const InputField: React.FC<InputFieldProps> = ({
   label,
@@ -26,6 +26,8 @@ export const InputField: React.FC<InputFieldProps> = ({
     </View>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   inputContainer: {

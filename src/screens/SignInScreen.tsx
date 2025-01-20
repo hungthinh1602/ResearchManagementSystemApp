@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { InputField } from './InputField';
-import { SignInFormData } from './Types';
+import { SignInFormData } from './types';
 
 const { width, height } = Dimensions.get('window'); // Lấy kích thước màn hình
 
