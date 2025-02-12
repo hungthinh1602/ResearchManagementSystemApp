@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { InputFieldProps, SignUpInputFieldProps } from './types';
+import { InputFieldProps, SignUpInputFieldProps } from '../screens/types';
 
 export const InputField: React.FC<SignUpInputFieldProps> = ({ label, id, type = 'text', value, onChange }) => {
     return (
