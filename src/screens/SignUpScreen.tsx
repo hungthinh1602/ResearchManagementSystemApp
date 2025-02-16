@@ -10,8 +10,16 @@ import {
   Platform,
 } from 'react-native';
 
+interface FormData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  confirmPassword: string;
+}
+
 export const SignUpScreen: React.FC = () => {
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<FormData>({
     email: '',
     firstName: '',
     lastName: '',
@@ -19,7 +27,7 @@ export const SignUpScreen: React.FC = () => {
     confirmPassword: '',
   });
 
-  const handleInputChange = (id: string, value: string) => {
+  const handleInputChange = (id: keyof FormData, value: string) => {
     setFormData((prevState) => ({
       ...prevState,
       [id]: value,
@@ -36,13 +44,13 @@ export const SignUpScreen: React.FC = () => {
 
       {/* Form nhập liệu */}
       <View style={styles.formContainer}>
-        {['Email', 'First Name', 'Last Name', 'Password', 'Confirm Password'].map((label, index) => (
+        {['email', 'firstName', 'lastName', 'password', 'confirmPassword'].map((field, index) => (
           <TextInput
             key={index}
-            placeholder={label}
-            secureTextEntry={label.toLowerCase().includes('password')}
-            value={formData[label.toLowerCase().replace(' ', '')]}
-            onChangeText={(text) => handleInputChange(label.toLowerCase().replace(' ', ''), text)}
+            placeholder={field.replace(/([A-Z])/g, ' $1').toUpperCase()} // Làm đẹp placeholder
+            secureTextEntry={field.toLowerCase().includes('password')}
+            value={formData[field as keyof FormData]} // Truy cập thuộc tính bằng cách sử dụng 'keyof FormData'
+            onChangeText={(text) => handleInputChange(field as keyof FormData, text)} // Dùng 'keyof FormData'
             style={styles.inputField}
           />
         ))}
