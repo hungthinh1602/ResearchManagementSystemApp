@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 type CustomTabIconProps = {
@@ -9,16 +9,16 @@ type CustomTabIconProps = {
 };
 
 const CustomTabIcon: React.FC<CustomTabIconProps> = ({ focused, iconName, label }) => {
+  const { width } = useWindowDimensions();
+  const iconSize = width * 0.06; // Responsive icon size
+  const fontSize = width * 0.035; // Responsive text size
+
   return (
     <View style={styles.container}>
       <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-        <Ionicons
-          name={iconName}
-          size={24}
-          color={focused ? "#6200ea" : "#999"}
-        />
+        <Ionicons name={iconName} size={iconSize} color={focused ? "#6200ea" : "#999"} />
       </View>
-      <Text style={[styles.label, focused && styles.labelActive]}>{label}</Text>
+      <Text style={[styles.label, focused && styles.labelActive, { fontSize }]}>{label}</Text>
     </View>
   );
 };
@@ -27,18 +27,23 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
+    width: 70, // Điều chỉnh chiều rộng để các icon không bị lệch
+    height: 70, // Đảm bảo chiều cao đồng nhất
   },
   iconWrapper: {
     backgroundColor: "transparent",
-    borderRadius: 50,
+    borderRadius: 30,
     padding: 8,
+    justifyContent: "center",
+    alignItems: "center",
   },
   iconWrapperActive: {
     backgroundColor: "#e0e0ff",
   },
   label: {
-    fontSize: 12,
     color: "#999",
+    textAlign: "center",
+    marginTop: 4, // Tạo khoảng cách hợp lý giữa icon và chữ
   },
   labelActive: {
     color: "#6200ea",
