@@ -6,6 +6,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import PendingRequestScreen from "../screens/PendingRequestScreen";
 import CustomTabIcon from "../components/CustomTabIcon";
+import RequestsScreen from "../screens/RequestsScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -51,7 +52,7 @@ const BottomTabNavigator = () => {
   })}
 >
   <Tab.Screen name="Home" component={HomeScreen} />
-  <Tab.Screen name="Requests" component={PendingRequestScreen} />
+  <Tab.Screen name="Requests" component={RequestsScreen} />
   <Tab.Screen name="Profile" component={ProfileScreen} />
   <Tab.Screen name="Settings" component={SettingsScreen} />
 </Tab.Navigator>
