@@ -32,3 +32,8 @@ export interface InputFieldProps {
     password: string;
     confirmPassword: string;
   }
+
+  export type RootStackParamList = {
+    Settings: undefined;  
+    About: undefined;  
+  };
