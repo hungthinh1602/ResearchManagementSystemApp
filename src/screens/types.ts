@@ -35,5 +35,6 @@ export interface InputFieldProps {
 
   export type RootStackParamList = {
     Settings: undefined;  
-    About: undefined;  
+    About: undefined;
+    CreateNewRequest: undefined;  
   };
