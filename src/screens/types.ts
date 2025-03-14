@@ -34,6 +34,11 @@ export interface InputFieldProps {
   }
 
   export type RootStackParamList = {
-    Settings: undefined;  
-    About: undefined;  
+    Auth: undefined;
+    AppDrawer: undefined;
+    Settings: undefined;
+    Profile: undefined;
+    About: undefined;
+    CreateNewRequest: undefined;
+    // Add any other screens you need
   };
