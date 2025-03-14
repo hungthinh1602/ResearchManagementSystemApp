@@ -3,11 +3,12 @@ import { createStackNavigator } from "@react-navigation/stack";
 import AuthNavigator from "./AuthNavigator";
 import AppDrawer from "./AppDrawer";
 import SettingsScreen from '../screens/SettingsScreen';
-import AboutScreen from '../screens/AboutScreen';  
+import ProfileScreen from '../screens/ProfileScreen';
+import AboutScreen from '../screens/AboutScreen';
 import CreateNewRequest from '../screens/CreateNewRequest';
 import { RootStackParamList } from '../screens/types';
 
-const Stack = createStackNavigator();
+const Stack = createStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
   return (
@@ -15,6 +16,7 @@ const AppNavigator = () => {
       <Stack.Screen name="Auth" component={AuthNavigator} />
       <Stack.Screen name="AppDrawer" component={AppDrawer} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="CreateNewRequest" component={CreateNewRequest} />
     </Stack.Navigator>

@@ -1,17 +1,16 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import HomeScreen from "../screens/HomeScreen";
-import ProfileScreen from "../screens/ProfileScreen";
-import NotificationsScreen from "../screens/NotificationsScreen";
-import CustomTabIcon from "../components/CustomTabIcon";
-import RequestsScreen from "../screens/RequestsScreen";
 import { View, Text } from "react-native";
+import HomeScreen from "../screens/HomeScreen";
+import SettingsScreen from "../screens/SettingsScreen";
+import RequestsScreen from "../screens/RequestsScreen";
+import NotificationsScreen from "../screens/NotificationsScreen";
 
 const Tab = createBottomTabNavigator();
 
 const BottomTabNavigator = () => {
-  // Mock notification count - in a real app, this would come from a state or context
+  // Mock notification count
   const unreadNotifications = 5;
 
   return (
@@ -43,13 +42,12 @@ const BottomTabNavigator = () => {
             iconName = focused ? "document-text" : "document-text-outline";
           } else if (route.name === "Notifications") {
             iconName = focused ? "notifications" : "notifications-outline";
-          } else if (route.name === "Profile") {
-            iconName = focused ? "person" : "person-outline";
+          } else if (route.name === "Settings") {
+            iconName = focused ? "settings" : "settings-outline";
           } else {
             iconName = "help-circle";
           }
 
-          // Return the icon component
           return (
             <View style={{ position: 'relative' }}>
               <Ionicons name={iconName} size={size} color={focused ? "#F27429" : "#8E8E93"} />
@@ -86,23 +84,8 @@ const BottomTabNavigator = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Requests" component={RequestsScreen} />
-      <Tab.Screen 
-        name="Notifications" 
-        component={NotificationsScreen}
-        options={{
-          tabBarLabel: 'Notifications',
-          headerStyle: {
-            backgroundColor: '#fff',
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-          headerTitleStyle: {
-            fontWeight: '600',
-            fontSize: 18,
-          },
-        }}
-      />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 };
