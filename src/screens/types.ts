@@ -40,5 +40,46 @@ export interface InputFieldProps {
     Profile: undefined;
     About: undefined;
     CreateNewRequest: undefined;
-    // Add any other screens you need
+    RequestDetail: { requestId: number; request: ResearchPaper };
+    // Add any other screens you have
   };
+
+  // Make sure ResearchPaper interface is defined here or imported
+  export interface ResearchPaper {
+    id: number;
+    type: string;
+    title: string;
+    abstract: string;
+    publisher: string;
+    department: Department;
+    category: Category;
+    status: string;
+    submissionDate: string;
+    publicationDate: string;
+    authors: Author[];
+    progress: number;
+    royalties: Royalties;
+  }
+
+  // Add these interfaces if they're not already defined
+  export interface Author {
+    name: string;
+    role: string;
+    email: string;
+  }
+
+  export interface Department {
+    id: number;
+    name: string;
+  }
+
+  export interface Category {
+    id: number;
+    name: string;
+  }
+
+  export interface Royalties {
+    total: number;
+    received: number;
+    pendingPayment: boolean;
+  }

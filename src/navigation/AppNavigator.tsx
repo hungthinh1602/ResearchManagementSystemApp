@@ -6,6 +6,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AboutScreen from '../screens/AboutScreen';
 import CreateNewRequest from '../screens/CreateNewRequest';
+import RequestDetailScreen from '../screens/RequestDetailScreen';
 import { RootStackParamList } from '../screens/types';
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -19,6 +20,7 @@ const AppNavigator = () => {
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="CreateNewRequest" component={CreateNewRequest} />
+      <Stack.Screen name="RequestDetail" component={RequestDetailScreen} />
     </Stack.Navigator>
   );
 };

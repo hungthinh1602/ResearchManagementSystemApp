@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Dimensions } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationProp, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from './types';
+import * as RootNavigation from '../navigation/navigationRef';
 
-type RequestsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+// Define the correct navigation type
+type RequestsScreenNavigationProp = NavigationProp<RootStackParamList>;
 
 // Define the interface for our research paper data
 interface Author {
@@ -46,6 +48,7 @@ interface ResearchPaper {
 }
 
 export const PendingRequestScreen: React.FC = () => {
+  // Use the correct navigation type
   const navigation = useNavigation<RequestsScreenNavigationProp>();
   
   // Mock data using the provided structure
@@ -163,8 +166,17 @@ export const PendingRequestScreen: React.FC = () => {
     }
   ]);
 
+  // Helper function to navigate with proper typing
+  const navigateTo = (screen: keyof RootStackParamList, params?: any) => {
+    navigation.navigate(screen as never, params as never);
+  };
+
   const handleCreateNewRequest = () => {
-    navigation.navigate('CreateNewRequest');
+    navigateTo('CreateNewRequest');
+  };
+  
+  const handleRequestPress = (item: ResearchPaper) => {
+    navigateTo('RequestDetail', { requestId: item.id, request: item });
   };
   
   // Helper function to format currency
@@ -202,7 +214,12 @@ export const PendingRequestScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          // Wrap the entire card in TouchableOpacity
+          <TouchableOpacity 
+            style={styles.card}
+            onPress={() => handleRequestPress(item)}
+            activeOpacity={0.7} // Add this for better touch feedback
+          >
             <View style={styles.cardHeader}>
               <View style={styles.typeContainer}>
                 <Text style={styles.typeText}>{item.type}</Text>
@@ -284,7 +301,7 @@ export const PendingRequestScreen: React.FC = () => {
                 )}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
       />
 
