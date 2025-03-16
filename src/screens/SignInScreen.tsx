@@ -5,24 +5,66 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  Image,
   KeyboardAvoidingView,
   Platform,
+  TextInput,
+  Dimensions,
+  StatusBar,
+  Animated,
+  Keyboard,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native'; 
-import { DrawerNavigationProp } from '@react-navigation/drawer'; 
-import { InputField } from '../components/InputField';
-import { SignInFormData } from './types';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
+import { RootStackParamList } from './types';
 
-type SignInScreenNavigationProp = DrawerNavigationProp<any, 'AppDrawer'>;
+type SignInScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
+
+interface SignInFormData {
+  email: string;
+  password: string;
+}
 
 export const SignInScreen: React.FC = () => {
   const [formData, setFormData] = React.useState<SignInFormData>({
     email: '',
     password: '',
   });
+  const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
+  const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
   const navigation = useNavigation<SignInScreenNavigationProp>();
+
+  React.useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setIsKeyboardVisible(true);
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setIsKeyboardVisible(false);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, [fadeAnim]);
 
   const handleInputChange = (field: keyof SignInFormData) => (value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -36,129 +78,209 @@ export const SignInScreen: React.FC = () => {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    alert('Google Sign-In pressed');
-    // Your logic for Google sign-in here
+  const handleForgotPassword = () => {
+    // Handle forgot password
+    alert('Forgot password functionality will be implemented soon');
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
       <KeyboardAvoidingView
-        style={styles.formContainer}
+        style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* Top logo/title */}
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>LRMS</Text>
+        <View style={styles.contentContainer}>
+          {/* Header with Logo */}
+          <Animated.View style={[styles.headerContainer, { opacity: fadeAnim }]}>
+            <View style={styles.logoContainer}>
+              <Ionicons name="library" size={60} color="#F27429" />
+            </View>
+            <Text style={styles.appName}>LRMS</Text>
+            <Text style={styles.appTagline}>Literature Research Management System</Text>
+          </Animated.View>
+
+          {/* Login Form */}
+          <View style={styles.formContainer}>
+            <Text style={styles.welcomeText}>Welcome Back</Text>
+            <Text style={styles.subtitleText}>Sign in to continue</Text>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={22} color="#999" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#999"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={formData.email}
+                onChangeText={handleInputChange('email')}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={22} color="#999" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#999"
+                secureTextEntry={!isPasswordVisible}
+                value={formData.password}
+                onChangeText={handleInputChange('password')}
+              />
+              <TouchableOpacity 
+                style={styles.visibilityIcon}
+                onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+              >
+                <Ionicons 
+                  name={isPasswordVisible ? "eye-off-outline" : "eye-outline"} 
+                  size={22} 
+                  color="#999" 
+                />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.forgotPasswordButton}
+              onPress={handleForgotPassword}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.signInButton}
+              onPress={handleSignIn}
+            >
+              <Text style={styles.signInButtonText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer with version */}
+          <View style={styles.footerContainer}>
+            <Text style={styles.versionText}>Version 1.0.0</Text>
+          </View>
         </View>
-
-        {/* Centered form */}
-        <Text style={styles.title}>Sign in</Text>
-
-        <View style={styles.form}>
-          <InputField
-            label="Email"
-            id="email"
-            value={formData.email}
-            onChange={handleInputChange('email')}
-          />
-          <InputField
-            label="Password"
-            id="password"
-            type="password"
-            value={formData.password}
-            onChange={handleInputChange('password')}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-          <Text style={styles.signInButtonText}>Sign in</Text>
-        </TouchableOpacity>
       </KeyboardAvoidingView>
-
-      {/* Bottom Google sign-in button */}
-      <View style={styles.googleButtonContainer}>
-        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
-          <Image
-            source={require('../../assets/google_signin.png')}
-            style={styles.googleButtonImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.googleText}>Sign in with Google</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
 
+const { width, height } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'space-between', 
+    backgroundColor: '#fff',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 24,
+  },
+  headerContainer: {
     alignItems: 'center',
-    paddingHorizontal: 20, 
+    marginTop: height * 0.05,
   },
   logoContainer: {
-    marginTop: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#f5f5f7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  logoText: {
-    fontSize: 36, 
+  appName: {
+    fontSize: 28,
     fontWeight: '700',
-    color: '#F27429',
+    color: '#333',
+    marginBottom: 8,
+  },
+  appTagline: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   formContainer: {
     width: '100%',
-    paddingVertical: 20, 
-    justifyContent: 'center',
+    marginVertical: 20,
   },
-  title: {
-    color: '#F27429',
+  welcomeText: {
     fontSize: 28,
     fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 20,
+    color: '#333',
+    marginBottom: 8,
   },
-  form: {
-    width: '100%',
-    marginBottom: 25, // Adjusted space between form and sign in button
+  subtitleText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 24,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    height: 56,
+    backgroundColor: '#f9f9f9',
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  visibilityIcon: {
+    padding: 4,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: '#F27429',
+    fontWeight: '600',
   },
   signInButton: {
     backgroundColor: '#F27429',
-    borderRadius: 16,
-    marginTop: 20,
-    paddingVertical: 15,
+    borderRadius: 12,
+    height: 56,
+    justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#F27429',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   signInButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  googleButtonContainer: {
-    marginBottom: 40, // Extra space at the bottom to make it more balanced
-  },
-  googleButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CCCCCC',
-    borderRadius: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: 250, // Adjust width
-    height: 50, // Increase height for better tap area
-  },
-  googleButtonImage: {
-    width: 24,
-    height: 24,
-    marginRight: 8,
-  },
-  googleText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    color: '#4285F4',
+  },
+  footerContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  versionText: {
+    fontSize: 14,
+    color: '#999',
   },
 });
 
