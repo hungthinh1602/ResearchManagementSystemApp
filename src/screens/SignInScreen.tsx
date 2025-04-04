@@ -12,11 +12,13 @@ import {
   StatusBar,
   Animated,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native'; 
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
+import Constants from 'expo-constants';
 
 type SignInScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
 
@@ -81,6 +83,61 @@ export const SignInScreen: React.FC = () => {
   const handleForgotPassword = () => {
     // Handle forgot password
     alert('Forgot password functionality will be implemented soon');
+  };
+
+  const testApiConnection = async () => {
+    try {
+      console.log('Starting API test...');
+      
+      const API_URL = 'https://0b1c-2405-4802-a39c-9ba0-45e7-1ca4-ab59-c590.ngrok-free.app/api/auth/login';
+      
+      console.log('Connecting to:', API_URL);
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "email": "lecturer1@example.com",
+          "password": "12345"
+        })
+      });
+      
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (response.ok) {
+        // Format the response data for display
+        const userInfo = data.user ? 
+          `Thông tin người dùng:\n` +
+          `- Email: ${data.user.email}\n` +
+          `- Vai trò: ${data.user.role}\n` +
+          `- ID: ${data.user.id}\n` +
+          `- Tên: ${data.user.fullName || 'N/A'}`
+          : 'Không có thông tin người dùng';
+
+        Alert.alert(
+          'Đăng nhập thành công ✅',
+          `${userInfo}\n\n` +
+          `Token: ${data.token?.substring(0, 50)}...`
+        );
+      } else {
+        Alert.alert(
+          'Đăng nhập thất bại ❌',
+          data.message || 'Lỗi không xác định'
+        );
+      }
+    } catch (error) {
+      console.error('Lỗi kết nối:', error);
+      Alert.alert(
+        'Lỗi kết nối API ❌',
+        'Không thể kết nối tới API. Vui lòng kiểm tra:\n\n' +
+        '1. Đường dẫn API có hoạt động không?\n' +
+        '2. Lỗi: ' + (error instanceof Error ? error.message : 'Không xác định')
+      );
+    }
   };
 
   return (
@@ -161,6 +218,13 @@ export const SignInScreen: React.FC = () => {
           <View style={styles.footerContainer}>
             <Text style={styles.versionText}>Version 1.0.0</Text>
           </View>
+
+          <TouchableOpacity 
+            style={styles.testButton} 
+            onPress={testApiConnection}
+          >
+            <Text style={styles.testButtonText}>Test API Connection</Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -281,6 +345,17 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 14,
     color: '#999',
+  },
+  testButton: {
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  testButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 16,
   },
 });
 

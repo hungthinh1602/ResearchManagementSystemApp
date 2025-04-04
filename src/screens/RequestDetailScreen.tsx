@@ -15,7 +15,25 @@ type RequestDetailRouteProp = RouteProp<RootStackParamList, 'RequestDetail'>;
 const RequestDetailScreen: React.FC = () => {
   const route = useRoute<RequestDetailRouteProp>();
   const navigation = useNavigation();
-  const { request } = route.params;
+  
+  // Add null check for route.params and request
+  const request = route.params?.request;
+
+  // If request is undefined, show a fallback UI
+  if (!request) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={60} color="#F27429" />
+        <Text style={styles.errorText}>Research paper details not found</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -47,6 +65,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f7',
   },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#333',
+    textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -67,6 +99,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  backButtonText: {
+    color: '#F27429',
+    fontWeight: '600',
   },
   headerTitle: {
     fontSize: 20,

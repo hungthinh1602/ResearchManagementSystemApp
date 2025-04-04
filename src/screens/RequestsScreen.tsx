@@ -179,7 +179,12 @@ export const RequestsScreen: React.FC = () => {
   ]);
   
   const handleRequestPress = (item: ResearchPaper) => {
-    navigateTo('RequestDetail', { requestId: item.id, request: item });
+    console.log('Request pressed:', item);
+    
+    navigateTo('RequestDetail', { 
+      requestId: item.id, 
+      request: item 
+    });
   };
   
   // Helper function to format currency
@@ -267,7 +272,7 @@ export const RequestsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f5f7" />
-      
+
       <FlatList
         data={requests}
         keyExtractor={(item) => item.id.toString()}
@@ -335,8 +340,8 @@ export const RequestsScreen: React.FC = () => {
                 {item.authors.length > 2 && (
                   <View style={[styles.authorBadge, styles.authorMore]}>
                     <Text style={styles.authorInitial}>+{item.authors.length - 2}</Text>
-                  </View>
-                )}
+          </View>
+        )}
               </View>
               
               {item.royalties.total > 0 && (
@@ -348,7 +353,7 @@ export const RequestsScreen: React.FC = () => {
                 </View>
               )}
             </View>
-          </TouchableOpacity>
+      </TouchableOpacity>
         )}
       />
     </View>
