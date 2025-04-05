@@ -13,12 +13,15 @@ import {
   Animated,
   Keyboard,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native'; 
+import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
-import Constants from 'expo-constants';
+import { authService } from '../services/api';
+import { API_BASE_URL } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type SignInScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
 
@@ -27,13 +30,14 @@ interface SignInFormData {
   password: string;
 }
 
-export const SignInScreen: React.FC = () => {
+const SignInScreen: React.FC = () => {
   const [formData, setFormData] = React.useState<SignInFormData>({
     email: '',
     password: '',
   });
   const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
   const navigation = useNavigation<SignInScreenNavigationProp>();
@@ -72,72 +76,38 @@ export const SignInScreen: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSignIn = () => {
-    if (formData.email === 'admin' && formData.password === 'admin') {
-      navigation.navigate('AppDrawer');
-    } else {
-      alert('Invalid credentials');
+  const handleSignIn = async () => {
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await authService.login(formData.email, formData.password);
+      
+      console.log('Login response:', response);
+      console.log('User data to store:', response.data);
+      console.log('Full name:', response.data.fullName);
+      
+      // Store user data in AsyncStorage
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data));
+      console.log('User data stored in AsyncStorage');
+      
+      // Navigate to AppDrawer which contains the HomeScreen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AppDrawer' }],
+      });
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message || 'Please check your credentials and try again');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    // Handle forgot password
-    alert('Forgot password functionality will be implemented soon');
-  };
-
-  const testApiConnection = async () => {
-    try {
-      console.log('Starting API test...');
-      
-      const API_URL = 'https://0b1c-2405-4802-a39c-9ba0-45e7-1ca4-ab59-c590.ngrok-free.app/api/auth/login';
-      
-      console.log('Connecting to:', API_URL);
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          "email": "lecturer1@example.com",
-          "password": "12345"
-        })
-      });
-      
-      const data = await response.json();
-      console.log('Response data:', data);
-
-      if (response.ok) {
-        // Format the response data for display
-        const userInfo = data.user ? 
-          `Thông tin người dùng:\n` +
-          `- Email: ${data.user.email}\n` +
-          `- Vai trò: ${data.user.role}\n` +
-          `- ID: ${data.user.id}\n` +
-          `- Tên: ${data.user.fullName || 'N/A'}`
-          : 'Không có thông tin người dùng';
-
-        Alert.alert(
-          'Đăng nhập thành công ✅',
-          `${userInfo}\n\n` +
-          `Token: ${data.token?.substring(0, 50)}...`
-        );
-      } else {
-        Alert.alert(
-          'Đăng nhập thất bại ❌',
-          data.message || 'Lỗi không xác định'
-        );
-      }
-    } catch (error) {
-      console.error('Lỗi kết nối:', error);
-      Alert.alert(
-        'Lỗi kết nối API ❌',
-        'Không thể kết nối tới API. Vui lòng kiểm tra:\n\n' +
-        '1. Đường dẫn API có hoạt động không?\n' +
-        '2. Lỗi: ' + (error instanceof Error ? error.message : 'Không xác định')
-      );
-    }
+    Alert.alert('Forgot Password', 'This feature will be available soon.');
   };
 
   return (
@@ -187,7 +157,7 @@ export const SignInScreen: React.FC = () => {
                 value={formData.password}
                 onChangeText={handleInputChange('password')}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.visibilityIcon}
                 onPress={() => setIsPasswordVisible(!isPasswordVisible)}
               >
@@ -209,8 +179,13 @@ export const SignInScreen: React.FC = () => {
             <TouchableOpacity 
               style={styles.signInButton}
               onPress={handleSignIn}
+              disabled={loading}
             >
-              <Text style={styles.signInButtonText}>Sign In</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.signInButtonText}>Sign In</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -218,13 +193,6 @@ export const SignInScreen: React.FC = () => {
           <View style={styles.footerContainer}>
             <Text style={styles.versionText}>Version 1.0.0</Text>
           </View>
-
-          <TouchableOpacity 
-            style={styles.testButton} 
-            onPress={testApiConnection}
-          >
-            <Text style={styles.testButtonText}>Test API Connection</Text>
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -345,17 +313,6 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 14,
     color: '#999',
-  },
-  testButton: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  testButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 16,
   },
 });
 

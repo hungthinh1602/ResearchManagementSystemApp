@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,28 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+
+interface UserData {
+  userId: number;
+  email: string;
+  fullName: string;
+  status: number;
+  role: number;
+  level: number;
+  department: {
+    departmentId: number;
+    departmentName: string;
+  };
+  profileImageUrl: string;
+  groups: Array<{
+    groupId: number;
+    groupName: string;
+    role: number;
+  }>;
+}
 
 interface ResearchSummary {
   total: number;
@@ -45,7 +65,30 @@ interface UpcomingDeadline {
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
   
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem('userData');
+      console.log('User data from AsyncStorage:', userDataString);
+      
+      if (userDataString) {
+        const userData = JSON.parse(userDataString);
+        console.log('Parsed user data:', userData);
+        console.log('Full name:', userData.fullName);
+        setUserData(userData);
+      } else {
+        console.log('No user data found in AsyncStorage');
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+  };
+
   // Helper function to navigate with proper typing
   const navigateTo = (screen: keyof RootStackParamList, params?: any) => {
     navigation.navigate(screen, params);
@@ -198,7 +241,7 @@ const HomeScreen: React.FC = () => {
         <View style={styles.welcomeContainer}>
           <View>
             <Text style={styles.welcomeText}>Welcome back,</Text>
-            <Text style={styles.userName}>Dr. Emily Smith</Text>
+            <Text style={styles.userName}>{userData?.fullName || 'User'}</Text>
           </View>
           <TouchableOpacity style={styles.profileButton} onPress={() => navigateTo('Profile')}>
             <Ionicons name="person-circle" size={40} color="#F27429" />
