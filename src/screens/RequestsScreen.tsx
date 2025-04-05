@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Dimensions } from 'react-native';
-import { useNavigation, NavigationProp, CommonActions } from '@react-navigation/native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  Dimensions,
+  StatusBar,
+  Image
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
-import * as RootNavigation from '../navigation/navigationRef';
 
-// Define the correct navigation type
-type RequestsScreenNavigationProp = NavigationProp<RootStackParamList>;
+type RequestsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 // Define the interface for our research paper data
 interface Author {
@@ -47,9 +55,13 @@ interface ResearchPaper {
   royalties: Royalties;
 }
 
-export const PendingRequestScreen: React.FC = () => {
-  // Use the correct navigation type
+export const RequestsScreen: React.FC = () => {
   const navigation = useNavigation<RequestsScreenNavigationProp>();
+  
+  // Helper function to navigate with proper typing
+  const navigateTo = (screen: keyof RootStackParamList, params?: any) => {
+    navigation.navigate(screen as never, params as never);
+  };
   
   // Mock data using the provided structure
   const [requests] = useState<ResearchPaper[]>([
@@ -165,18 +177,14 @@ export const PendingRequestScreen: React.FC = () => {
       }
     }
   ]);
-
-  // Helper function to navigate with proper typing
-  const navigateTo = (screen: keyof RootStackParamList, params?: any) => {
-    navigation.navigate(screen as never, params as never);
-  };
-
-  const handleCreateNewRequest = () => {
-    navigateTo('CreateNewRequest');
-  };
   
   const handleRequestPress = (item: ResearchPaper) => {
-    navigateTo('RequestDetail', { requestId: item.id, request: item });
+    console.log('Request pressed:', item);
+    
+    navigateTo('RequestDetail', { 
+      requestId: item.id, 
+      request: item 
+    });
   };
   
   // Helper function to format currency
@@ -204,27 +212,87 @@ export const PendingRequestScreen: React.FC = () => {
     }
   };
 
+  // Helper function to get status icon
+  const getStatusIcon = (status: string) => {
+    switch(status.toLowerCase()) {
+      case 'published':
+        return 'checkmark-circle';
+      case 'accepted':
+        return 'thumbs-up';
+      case 'under review':
+        return 'hourglass';
+      case 'rejected':
+        return 'close-circle';
+      default:
+        return 'help-circle';
+    }
+  };
+
+  // Helper function to get paper type icon
+  const getPaperTypeIcon = (type: string) => {
+    switch(type.toLowerCase()) {
+      case 'conference':
+        return 'people';
+      case 'journal':
+        return 'journal';
+      case 'book':
+        return 'book';
+      default:
+        return 'document-text';
+    }
+  };
+
+  const renderListHeader = () => (
+    <View style={styles.listHeader}>
+      <Text style={styles.headerTitle}>Research Papers</Text>
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{requests.length}</Text>
+          <Text style={styles.statLabel}>Total</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{requests.filter(r => r.status === 'published').length}</Text>
+          <Text style={styles.statLabel}>Published</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{requests.filter(r => r.status === 'under review').length}</Text>
+          <Text style={styles.statLabel}>In Review</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderEmptyList = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="document-text-outline" size={80} color="#ccc" />
+      <Text style={styles.emptyText}>No research papers found</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>Research Papers</Text>
-      
+      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f7" />
+
       <FlatList
         data={requests}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={renderEmptyList}
         renderItem={({ item }) => (
-          // Wrap the entire card in TouchableOpacity
           <TouchableOpacity 
             style={styles.card}
             onPress={() => handleRequestPress(item)}
-            activeOpacity={0.7} // Add this for better touch feedback
+            activeOpacity={0.7}
           >
-            <View style={styles.cardHeader}>
+            <View style={styles.cardTop}>
               <View style={styles.typeContainer}>
+                <Ionicons name={getPaperTypeIcon(item.type)} size={16} color="#555" />
                 <Text style={styles.typeText}>{item.type}</Text>
               </View>
               <View style={[styles.statusContainer, { backgroundColor: getStatusColor(item.status) }]}>
+                <Ionicons name={getStatusIcon(item.status)} size={14} color="#fff" />
                 <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
               </View>
             </View>
@@ -235,46 +303,23 @@ export const PendingRequestScreen: React.FC = () => {
               {item.abstract}
             </Text>
             
-            <View style={styles.detailsContainer}>
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Publisher:</Text>
-                <Text style={styles.detailValue}>{item.publisher}</Text>
+            <View style={styles.metadataContainer}>
+              <View style={styles.metadataItem}>
+                <Ionicons name="business-outline" size={14} color="#666" />
+                <Text style={styles.metadataText}>{item.department.name}</Text>
               </View>
               
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Department:</Text>
-                <Text style={styles.detailValue}>{item.department.name}</Text>
+              <View style={styles.metadataItem}>
+                <Ionicons name="pricetag-outline" size={14} color="#666" />
+                <Text style={styles.metadataText}>{item.category.name}</Text>
               </View>
-              
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Category:</Text>
-                <Text style={styles.detailValue}>{item.category.name}</Text>
-              </View>
-              
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Submission:</Text>
-                <Text style={styles.detailValue}>{item.submissionDate}</Text>
-              </View>
-              
-              {item.publicationDate && (
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Publication:</Text>
-                  <Text style={styles.detailValue}>{item.publicationDate}</Text>
-                </View>
-              )}
-            </View>
-            
-            <View style={styles.authorsContainer}>
-              <Text style={styles.authorsLabel}>Authors:</Text>
-              {item.authors.map((author, index) => (
-                <Text key={index} style={styles.authorText}>
-                  {author.name} ({author.role})
-                </Text>
-              ))}
             </View>
             
             <View style={styles.progressContainer}>
-              <Text style={styles.progressLabel}>Progress: {item.progress}%</Text>
+              <View style={styles.progressInfo}>
+                <Text style={styles.progressLabel}>Progress</Text>
+                <Text style={styles.progressPercentage}>{item.progress}%</Text>
+              </View>
               <View style={styles.progressBarBackground}>
                 <View 
                   style={[
@@ -285,32 +330,32 @@ export const PendingRequestScreen: React.FC = () => {
               </View>
             </View>
             
-            <View style={styles.royaltiesContainer}>
-              <Text style={styles.royaltiesLabel}>Royalties:</Text>
-              <View style={styles.royaltiesDetails}>
-                <Text style={styles.royaltiesText}>
-                  Total: {formatCurrency(item.royalties.total)}
-                </Text>
-                <Text style={styles.royaltiesText}>
-                  Received: {formatCurrency(item.royalties.received)}
-                </Text>
-                {item.royalties.pendingPayment && (
-                  <View style={styles.pendingBadge}>
-                    <Text style={styles.pendingText}>Payment Pending</Text>
+            <View style={styles.cardFooter}>
+              <View style={styles.authorsPreview}>
+                {item.authors.slice(0, 2).map((author, index) => (
+                  <View key={index} style={styles.authorBadge}>
+                    <Text style={styles.authorInitial}>{author.name.charAt(0)}</Text>
                   </View>
-                )}
+                ))}
+                {item.authors.length > 2 && (
+                  <View style={[styles.authorBadge, styles.authorMore]}>
+                    <Text style={styles.authorInitial}>+{item.authors.length - 2}</Text>
+          </View>
+        )}
               </View>
+              
+              {item.royalties.total > 0 && (
+                <View style={styles.royaltiesPreview}>
+                  <Ionicons name="cash-outline" size={14} color="#F27429" />
+                  <Text style={styles.royaltiesText}>
+                    {formatCurrency(item.royalties.received)} / {formatCurrency(item.royalties.total)}
+                  </Text>
+                </View>
+              )}
             </View>
-          </TouchableOpacity>
+      </TouchableOpacity>
         )}
       />
-
-      <TouchableOpacity
-        style={styles.floatingButton}
-        onPress={handleCreateNewRequest}
-      >
-        <Text style={styles.floatingButtonText}>+</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -320,38 +365,79 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: '#f5f5f7',
-    position: 'relative',
+  },
+  listHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
     color: '#333',
-    marginBottom: 20,
-    marginTop: 10,
+    marginBottom: 16,
   },
-  listContent: {
-    paddingBottom: 100,
-  },
-  card: {
-    backgroundColor: '#ffffff',
+  statsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  cardHeader: {
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#F27429',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  listContent: {
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 16,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
   typeContainer: {
-    backgroundColor: '#e0e0e0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
@@ -360,8 +446,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#555',
+    marginLeft: 4,
   },
   statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
@@ -370,6 +459,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#fff',
+    marginLeft: 4,
   },
   title: {
     fontSize: 18,
@@ -384,114 +474,96 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 20,
   },
-  detailsContainer: {
-    marginBottom: 12,
-    backgroundColor: '#f9f9f9',
-    padding: 10,
-    borderRadius: 8,
-  },
-  detailItem: {
+  metadataContainer: {
     flexDirection: 'row',
-    marginBottom: 4,
-  },
-  detailLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#555',
-    width: 100,
-  },
-  detailValue: {
-    fontSize: 13,
-    color: '#333',
-    flex: 1,
-  },
-  authorsContainer: {
+    flexWrap: 'wrap',
     marginBottom: 12,
   },
-  authorsLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
-    marginBottom: 4,
+  metadataItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 8,
   },
-  authorText: {
-    fontSize: 13,
-    color: '#333',
-    marginBottom: 2,
+  metadataText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
   },
   progressContainer: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  progressLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
+  progressInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 4,
   },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  progressPercentage: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F27429',
+  },
   progressBarBackground: {
-    height: 8,
+    height: 6,
     backgroundColor: '#e0e0e0',
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#F27429',
-    borderRadius: 4,
+    borderRadius: 3,
   },
-  royaltiesContainer: {
-    marginTop: 8,
-  },
-  royaltiesLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
-    marginBottom: 4,
-  },
-  royaltiesDetails: {
+  cardFooter: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  royaltiesText: {
-    fontSize: 13,
-    color: '#333',
-    marginRight: 12,
+  authorsPreview: {
+    flexDirection: 'row',
   },
-  pendingBadge: {
-    backgroundColor: '#ffecb3',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    marginLeft: 'auto',
-  },
-  pendingText: {
-    fontSize: 11,
-    color: '#ff8f00',
-    fontWeight: '600',
-  },
-  floatingButton: {
-    position: 'absolute',
-    right: 20,
-    bottom: 80, 
-    backgroundColor: '#F27429',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  authorBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#2196F3',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
+    marginRight: -8,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
-  floatingButtonText: {
-    fontSize: 30,
-    color: '#fff',
+  authorMore: {
+    backgroundColor: '#e0e0e0',
+  },
+  authorInitial: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#fff',
+  },
+  royaltiesPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E1',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  royaltiesText: {
+    fontSize: 12,
+    color: '#F27429',
+    fontWeight: '500',
+    marginLeft: 4,
   },
 });
 
-export default PendingRequestScreen;
+export default RequestsScreen;

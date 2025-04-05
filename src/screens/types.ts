@@ -41,6 +41,7 @@ export interface InputFieldProps {
     About: undefined;
     CreateNewRequest: undefined;
     RequestDetail: { requestId: number; request: ResearchPaper };
+    Requests: undefined;
     // Add any other screens you have
   };
 

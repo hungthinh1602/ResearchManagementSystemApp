@@ -11,7 +11,7 @@ const Tab = createBottomTabNavigator();
 
 const BottomTabNavigator = () => {
   // Mock notification count
-  const unreadNotifications = 5;
+  const unreadNotifications = 10;
 
   return (
     <Tab.Navigator

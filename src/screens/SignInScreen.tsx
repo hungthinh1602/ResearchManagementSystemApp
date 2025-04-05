@@ -12,11 +12,16 @@ import {
   StatusBar,
   Animated,
   Keyboard,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native'; 
+import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
+import { authService } from '../services/api';
+import { API_BASE_URL } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type SignInScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
 
@@ -25,13 +30,14 @@ interface SignInFormData {
   password: string;
 }
 
-export const SignInScreen: React.FC = () => {
+const SignInScreen: React.FC = () => {
   const [formData, setFormData] = React.useState<SignInFormData>({
     email: '',
     password: '',
   });
   const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
   const navigation = useNavigation<SignInScreenNavigationProp>();
@@ -70,17 +76,38 @@ export const SignInScreen: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSignIn = () => {
-    if (formData.email === 'admin' && formData.password === 'admin') {
-      navigation.navigate('AppDrawer');
-    } else {
-      alert('Invalid credentials');
+  const handleSignIn = async () => {
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await authService.login(formData.email, formData.password);
+      
+      console.log('Login response:', response);
+      console.log('User data to store:', response.data);
+      console.log('Full name:', response.data.fullName);
+      
+      // Store user data in AsyncStorage
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data));
+      console.log('User data stored in AsyncStorage');
+      
+      // Navigate to AppDrawer which contains the HomeScreen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AppDrawer' }],
+      });
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message || 'Please check your credentials and try again');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    // Handle forgot password
-    alert('Forgot password functionality will be implemented soon');
+    Alert.alert('Forgot Password', 'This feature will be available soon.');
   };
 
   return (
@@ -130,7 +157,7 @@ export const SignInScreen: React.FC = () => {
                 value={formData.password}
                 onChangeText={handleInputChange('password')}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.visibilityIcon}
                 onPress={() => setIsPasswordVisible(!isPasswordVisible)}
               >
@@ -152,8 +179,13 @@ export const SignInScreen: React.FC = () => {
             <TouchableOpacity 
               style={styles.signInButton}
               onPress={handleSignIn}
+              disabled={loading}
             >
-              <Text style={styles.signInButtonText}>Sign In</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.signInButtonText}>Sign In</Text>
+              )}
             </TouchableOpacity>
           </View>
 
