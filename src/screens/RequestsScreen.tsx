@@ -60,7 +60,7 @@ export const RequestsScreen: React.FC = () => {
   
   // Helper function to navigate with proper typing
   const navigateTo = (screen: keyof RootStackParamList, params?: any) => {
-    navigation.navigate(screen as never, params as never);
+    navigation.navigate(screen, params);
   };
   
   // Mock data using the provided structure

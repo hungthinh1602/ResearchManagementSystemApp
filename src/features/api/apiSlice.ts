@@ -1,6 +1,13 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type { BaseQueryFn } from '@reduxjs/toolkit/query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../config/api';
+
+interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  status: number;
+}
 
 export const apiSlice = createApi({
   reducerPath: 'api',
@@ -23,7 +30,7 @@ export const apiSlice = createApi({
       headers.set('Accept', '*/*');
       return headers;
     },
-  }),
-  tagTypes: ['UserProfile', 'Users', 'Groups', 'DepartmentUsers'],
+  }) as BaseQueryFn,
+  tagTypes: ['UserProfile', 'Users', 'Groups', 'DepartmentUsers'] as const,
   endpoints: () => ({}),
 }); 
