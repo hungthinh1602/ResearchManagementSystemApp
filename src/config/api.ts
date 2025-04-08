@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 // Base API URL - using ngrok URL for development
-export const API_BASE_URL = 'https://09f6-2405-4800-5f29-5100-f91f-d8b2-32fc-3bc.ngrok-free.app';
+export const API_BASE_URL = 'https://af11-2405-4802-a39c-9ba0-a5a9-177f-c7f-73ff.ngrok-free.app';
 
 // Common headers for all API requests
 export const DEFAULT_HEADERS = {
@@ -24,7 +24,7 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `/api/research/${id}`,
   },
   USER: {
-    PROFILE: '/api/user/profile',
+    PROFILE: '/api/users',
     UPDATE_PROFILE: '/api/user/profile',
   },
 };
