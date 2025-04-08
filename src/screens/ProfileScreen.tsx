@@ -1,18 +1,87 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../config/api';
+
+interface Group {
+  groupId: number;
+  groupName: string;
+  role: number;
+}
+
+interface UserProfile {
+  userId: number;
+  username: string;
+  password: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  roleId: number | null;
+  departmentId: number;
+  status: number;
+  createdAt: string;
+  updatedAt: string;
+  groups: Group[];
+  level: string;
+}
+
+interface ApiResponse {
+  statusCode: number;
+  message: string;
+  data: UserProfile;
+}
 
 const ProfileScreen: React.FC = () => {
-  // Mock user data
-  const user = {
-    name: 'Dr. Emily Smith',
-    email: 'emily.smith@university.edu',
-    role: 'Professor',
-    department: 'Computer Science',
-    joinDate: 'January 2020',
-    publications: 12,
-    citations: 245
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUserProfile = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      if (!userData) {
+        Alert.alert('Error', 'User data not found');
+        return;
+      }
+
+      const { userId, accessToken } = JSON.parse(userData);
+      
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': '*/*'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch profile');
+      }
+
+      const data: ApiResponse = await response.json();
+      if (data.statusCode === 200) {
+        setProfile(data.data);
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#F27429" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -20,30 +89,41 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.profileImageContainer}>
           <Ionicons name="person-circle" size={100} color="#F27429" />
         </View>
-        <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.role}>{user.role} • {user.department}</Text>
-        <Text style={styles.email}>{user.email}</Text>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{user.publications}</Text>
-          <Text style={styles.statLabel}>Publications</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{user.citations}</Text>
-          <Text style={styles.statLabel}>Citations</Text>
-        </View>
+        <Text style={styles.name}>{profile?.fullName || 'N/A'}</Text>
+        <Text style={styles.role}>Level: {profile?.level || 'N/A'}</Text>
+        <Text style={styles.email}>{profile?.email || 'N/A'}</Text>
       </View>
 
       <View style={styles.infoContainer}>
         <View style={styles.infoItem}>
-          <Ionicons name="calendar-outline" size={20} color="#666" />
-          <Text style={styles.infoLabel}>Member since:</Text>
-          <Text style={styles.infoValue}>{user.joinDate}</Text>
+          <Ionicons name="call-outline" size={20} color="#666" />
+          <Text style={styles.infoLabel}>Phone:</Text>
+          <Text style={styles.infoValue}>{profile?.phone || 'N/A'}</Text>
+        </View>
+        <View style={styles.infoItem}>
+          <Ionicons name="person-outline" size={20} color="#666" />
+          <Text style={styles.infoLabel}>Username:</Text>
+          <Text style={styles.infoValue}>{profile?.username || 'N/A'}</Text>
+        </View>
+        <View style={styles.infoItem}>
+          <Ionicons name="business-outline" size={20} color="#666" />
+          <Text style={styles.infoLabel}>Department:</Text>
+          <Text style={styles.infoValue}>{profile?.departmentId || 'N/A'}</Text>
         </View>
       </View>
+
+      {profile?.groups && profile.groups.length > 0 && (
+        <View style={styles.infoContainer}>
+          <Text style={styles.sectionTitle}>Groups</Text>
+          {profile.groups.map((group, index) => (
+            <View key={group.groupId} style={[styles.infoItem, index === profile.groups.length - 1 && styles.lastItem]}>
+              <Ionicons name="people-outline" size={20} color="#666" />
+              <Text style={styles.infoLabel}>Group {index + 1}:</Text>
+              <Text style={styles.infoValue}>{group.groupName} (Role: {group.role})</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -51,6 +131,12 @@ const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f7',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#f5f5f7',
   },
   header: {
@@ -87,44 +173,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 24,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#eee',
-    marginHorizontal: 16,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#F27429',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
   infoContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
     marginHorizontal: 16,
     marginTop: 24,
-    marginBottom: 24,
+    marginBottom: 8,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -132,16 +186,25 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 16,
+  },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  lastItem: {
+    marginBottom: 0,
   },
   infoLabel: {
     fontSize: 14,
     color: '#666',
     marginLeft: 8,
-    width: 120,
+    width: 100,
   },
   infoValue: {
     fontSize: 14,
