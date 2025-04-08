@@ -1,84 +1,84 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useGetUserProfileQuery } from '../features/user/userSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../config/api';
 
 interface Group {
   groupId: number;
   groupName: string;
-  role: number;
+  roleText: string;
 }
 
 interface UserProfile {
   userId: number;
   username: string;
-  password: string;
   fullName: string;
   email: string;
   phone: string;
-  roleId: number | null;
   departmentId: number;
-  status: number;
-  createdAt: string;
-  updatedAt: string;
+  level: number;
+  levelText: string;
   groups: Group[];
-  level: string;
-}
-
-interface ApiResponse {
-  statusCode: number;
-  message: string;
-  data: UserProfile;
 }
 
 const ProfileScreen: React.FC = () => {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = React.useState<number | null>(null);
 
-  const fetchUserProfile = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('userData');
-      if (!userData) {
-        Alert.alert('Error', 'User data not found');
-        return;
-      }
-
-      const { userId, accessToken } = JSON.parse(userData);
-      
-      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': '*/*'
+  React.useEffect(() => {
+    const getUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          console.log('Stored user data:', parsed);
+          setUserId(parsed.userId);
+        } else {
+          console.log('No userData found in AsyncStorage');
         }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile');
+      } catch (error) {
+        console.error('Error getting user data:', error);
       }
+    };
 
-      const data: ApiResponse = await response.json();
-      if (data.statusCode === 200) {
-        setProfile(data.data);
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      Alert.alert('Error', 'Failed to load profile data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserProfile();
+    getUserData();
   }, []);
 
-  if (loading) {
+  const { data: profile, isLoading, error } = useGetUserProfileQuery(userId, {
+    skip: !userId
+  });
+
+  React.useEffect(() => {
+    if (error) {
+      console.error('Profile fetch error:', error);
+    }
+    if (profile) {
+      console.log('Profile data:', profile);
+    }
+  }, [error, profile]);
+
+  if (isLoading || !userId) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#F27429" />
+      </View>
+    );
+  }
+
+  if (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Error loading profile</Text>
+        <Text style={styles.errorDetail}>{errorMessage}</Text>
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>No profile data available</Text>
       </View>
     );
   }
@@ -89,37 +89,39 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.profileImageContainer}>
           <Ionicons name="person-circle" size={100} color="#F27429" />
         </View>
-        <Text style={styles.name}>{profile?.fullName || 'N/A'}</Text>
-        <Text style={styles.role}>Level: {profile?.level || 'N/A'}</Text>
-        <Text style={styles.email}>{profile?.email || 'N/A'}</Text>
+        <Text style={styles.name}>{profile.fullName || 'N/A'}</Text>
+        <Text style={styles.role}>{profile.levelText || 'N/A'}</Text>
+        <Text style={styles.email}>{profile.email || 'N/A'}</Text>
       </View>
 
       <View style={styles.infoContainer}>
         <View style={styles.infoItem}>
           <Ionicons name="call-outline" size={20} color="#666" />
           <Text style={styles.infoLabel}>Phone:</Text>
-          <Text style={styles.infoValue}>{profile?.phone || 'N/A'}</Text>
+          <Text style={styles.infoValue}>{profile.phone || 'N/A'}</Text>
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="person-outline" size={20} color="#666" />
           <Text style={styles.infoLabel}>Username:</Text>
-          <Text style={styles.infoValue}>{profile?.username || 'N/A'}</Text>
+          <Text style={styles.infoValue}>{profile.username || 'N/A'}</Text>
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="business-outline" size={20} color="#666" />
           <Text style={styles.infoLabel}>Department:</Text>
-          <Text style={styles.infoValue}>{profile?.departmentId || 'N/A'}</Text>
+          <Text style={styles.infoValue}>ID: {profile.departmentId || 'N/A'}</Text>
         </View>
       </View>
 
-      {profile?.groups && profile.groups.length > 0 && (
+      {profile.groups && profile.groups.length > 0 && (
         <View style={styles.infoContainer}>
           <Text style={styles.sectionTitle}>Groups</Text>
-          {profile.groups.map((group, index) => (
-            <View key={group.groupId} style={[styles.infoItem, index === profile.groups.length - 1 && styles.lastItem]}>
+          {profile.groups.map((group: Group) => (
+            <View key={group.groupId} style={styles.infoItem}>
               <Ionicons name="people-outline" size={20} color="#666" />
-              <Text style={styles.infoLabel}>Group {index + 1}:</Text>
-              <Text style={styles.infoValue}>{group.groupName} (Role: {group.role})</Text>
+              <Text style={styles.infoLabel}>Group:</Text>
+              <Text style={styles.infoValue}>
+                {group.groupName} ({group.roleText})
+              </Text>
             </View>
           ))}
         </View>
@@ -138,6 +140,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f5f5f7',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  errorDetail: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
   header: {
     alignItems: 'center',
@@ -196,9 +209,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
-  },
-  lastItem: {
-    marginBottom: 0,
   },
   infoLabel: {
     fontSize: 14,
