@@ -1,4 +1,21 @@
 import { apiSlice } from "../api/apiSlice";
+import { API_ENDPOINTS } from "../../config/api";
+import { EndpointBuilder } from '@reduxjs/toolkit/dist/query/endpointDefinitions';
+
+interface UserData {
+  userId: number;
+  username: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  departmentId: number;
+  level: number;
+  groups?: Array<{
+    groupId: number;
+    groupName: string;
+    role: number;
+  }>;
+}
 
 // Helper function to map level to readable format
 const getLevelString = (level: number) => {
@@ -37,11 +54,11 @@ const getStatusString = (status: number) => {
 };
 
 export const userApiSlice = apiSlice.injectEndpoints({
-  endpoints: (builder) => ({
+  endpoints: (builder: EndpointBuilder<any, any, any>) => ({
     // Get user profile
-    getUserProfile: builder.query({
-      query: (userId) => ({
-        url: `/users/${userId}`,
+    getUserProfile: builder.query<UserData, number>({
+      query: (userId: number) => ({
+        url: `${API_ENDPOINTS.USER.PROFILE}/${userId}`,
         method: 'GET'
       }),
       transformResponse: (response: any) => {
@@ -168,4 +185,4 @@ export const {
   useUpdateUserProfileMutation,
   useChangePasswordMutation,
   useGetUsersByDepartmentQuery
-} = userApiSlice; 
+} = userApiSlice;
