@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface Group {
   groupId: number;
   groupName: string;
-  roleText: string;
+  roleText?: string;
 }
 
 interface UserProfile {
@@ -44,7 +44,7 @@ const ProfileScreen: React.FC = () => {
     getUserData();
   }, []);
 
-  const { data: profile, isLoading, error } = useGetUserProfileQuery(userId, {
+  const { data: profile, isLoading, error } = useGetUserProfileQuery(userId ?? 0, {
     skip: !userId
   });
 
