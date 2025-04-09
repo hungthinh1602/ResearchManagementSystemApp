@@ -290,7 +290,7 @@ export const RequestsScreen: React.FC = () => {
           </Text>
         </View>
       ) : (
-        <FlatList
+      <FlatList
           data={projects}
           renderItem={renderRequestItem}
           keyExtractor={(item) => item.projectId.toString()}

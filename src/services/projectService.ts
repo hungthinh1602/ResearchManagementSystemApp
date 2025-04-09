@@ -30,7 +30,7 @@ export const projectService = {
   getMyProjects: async () => {
     try {
       const authHeader = await getAuthHeader();
-      const response = await apiRequest('/api/project/get-my-projects', {
+      const response = await apiRequest(API_ENDPOINTS.PROJECT.GET_MY_PROJECTS, {
         method: 'GET',
         headers: authHeader,
       });
@@ -44,7 +44,7 @@ export const projectService = {
   getProject: async (id: number) => {
     try {
       const authHeader = await getAuthHeader();
-      const response = await apiRequest(`/api/project/get-project-by-projectId/${id}`, {
+      const response = await apiRequest(API_ENDPOINTS.PROJECT.GET_PROJECT(id), {
         method: 'GET',
         headers: {
           ...authHeader,
@@ -58,47 +58,47 @@ export const projectService = {
     }
   },
 
-  createProject: async (projectData: any) => {
-    try {
-      const authHeader = await getAuthHeader();
-      const response = await apiRequest('/api/project', {
-        method: 'POST',
-        headers: authHeader,
-        body: JSON.stringify(projectData),
-      });
-      return response;
-    } catch (error) {
-      console.error('Error in createProject:', error);
-      throw error;
-    }
-  },
+//   createProject: async (projectData: any) => {
+//     try {
+//       const authHeader = await getAuthHeader();
+//       const response = await apiRequest('/api/project', {
+//         method: 'POST',
+//         headers: authHeader,
+//         body: JSON.stringify(projectData),
+//       });
+//       return response;
+//     } catch (error) {
+//       console.error('Error in createProject:', error);
+//       throw error;
+//     }
+//   },
 
-  updateProject: async (id: number, projectData: any) => {
-    try {
-      const authHeader = await getAuthHeader();
-      const response = await apiRequest(`/api/project/${id}`, {
-        method: 'PUT',
-        headers: authHeader,
-        body: JSON.stringify(projectData),
-      });
-      return response;
-    } catch (error) {
-      console.error('Error in updateProject:', error);
-      throw error;
-    }
-  },
+//   updateProject: async (id: number, projectData: any) => {
+//     try {
+//       const authHeader = await getAuthHeader();
+//       const response = await apiRequest(`/api/project/${id}`, {
+//         method: 'PUT',
+//         headers: authHeader,
+//         body: JSON.stringify(projectData),
+//       });
+//       return response;
+//     } catch (error) {
+//       console.error('Error in updateProject:', error);
+//       throw error;
+//     }
+//   },
 
-  deleteProject: async (id: number) => {
-    try {
-      const authHeader = await getAuthHeader();
-      const response = await apiRequest(`/api/project/${id}`, {
-        method: 'DELETE',
-        headers: authHeader,
-      });
-      return response;
-    } catch (error) {
-      console.error('Error in deleteProject:', error);
-      throw error;
-    }
-  },
+//   deleteProject: async (id: number) => {
+//     try {
+//       const authHeader = await getAuthHeader();
+//       const response = await apiRequest(`/api/project/${id}`, {
+//         method: 'DELETE',
+//         headers: authHeader,
+//       });
+//       return response;
+//     } catch (error) {
+//       console.error('Error in deleteProject:', error);
+//       throw error;
+//     }
+//   },
 }; 
