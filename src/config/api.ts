@@ -27,6 +27,13 @@ export const API_ENDPOINTS = {
     PROFILE: '/api/users',
     UPDATE_PROFILE: '/api/user/profile',
   },
+  PROJECT: {
+    GET_MY_PROJECTS: '/api/project/get-my-projects',
+    GET_PROJECT: (id: number) => `/api/project/${id}`,
+    CREATE_PROJECT: '/api/project',
+    UPDATE_PROJECT: (id: number) => `/api/project/${id}`,
+    DELETE_PROJECT: (id: number) => `/api/project/${id}`,
+  },
 };
 
 // Helper function to handle API responses

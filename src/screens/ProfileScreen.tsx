@@ -115,12 +115,12 @@ const ProfileScreen: React.FC = () => {
       {profile.groups && profile.groups.length > 0 && (
         <View style={styles.infoContainer}>
           <Text style={styles.sectionTitle}>Groups</Text>
-          {profile.groups.map((group: Group) => (
+          {profile.groups.map((group) => (
             <View key={group.groupId} style={styles.infoItem}>
               <Ionicons name="people-outline" size={20} color="#666" />
               <Text style={styles.infoLabel}>Group:</Text>
               <Text style={styles.infoValue}>
-                {group.groupName} ({group.roleText})
+                {group.groupName} ({group.roleText || 'N/A'})
               </Text>
             </View>
           ))}

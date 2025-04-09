@@ -6,6 +6,7 @@ import HomeScreen from "../screens/HomeScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import RequestsScreen from "../screens/RequestsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
+import ProjectScreen from "../screens/ProjectScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -38,6 +39,8 @@ const BottomTabNavigator = () => {
 
           if (route.name === "Home") {
             iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "Projects") {
+            iconName = focused ? "folder" : "folder-outline";
           } else if (route.name === "Requests") {
             iconName = focused ? "document-text" : "document-text-outline";
           } else if (route.name === "Notifications") {
@@ -83,6 +86,7 @@ const BottomTabNavigator = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Projects" component={ProjectScreen} />
       <Tab.Screen name="Requests" component={RequestsScreen} />
       <Tab.Screen name="Notifications" component={NotificationsScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />

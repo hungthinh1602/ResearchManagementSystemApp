@@ -44,15 +44,6 @@ interface ResearchSummary {
   drafts: number;
 }
 
-interface RecentActivity {
-  id: string;
-  type: 'status_change' | 'comment' | 'royalty_payment' | 'submission';
-  title: string;
-  description: string;
-  timestamp: string;
-  relatedPaperId?: number;
-}
-
 interface UpcomingDeadline {
   id: string;
   title: string;
@@ -102,34 +93,6 @@ const HomeScreen: React.FC = () => {
     drafts: 4,
   });
 
-  // Mock data for recent activities
-  const [recentActivities] = useState<RecentActivity[]>([
-    {
-      id: '1',
-      type: 'status_change',
-      title: 'Paper Status Updated',
-      description: 'Machine Learning Applications in Education has been accepted',
-      timestamp: '2 hours ago',
-      relatedPaperId: 1,
-    },
-    {
-      id: '2',
-      type: 'royalty_payment',
-      title: 'Royalty Payment Received',
-      description: 'You received 5,000,000 VND for Digital Transformation in Manufacturing',
-      timestamp: '1 day ago',
-      relatedPaperId: 2,
-    },
-    {
-      id: '3',
-      type: 'comment',
-      title: 'New Comment',
-      description: 'Dr. Lisa Nguyen commented on your paper Sustainable Energy Solutions',
-      timestamp: '3 days ago',
-      relatedPaperId: 3,
-    },
-  ]);
-
   // Mock data for upcoming deadlines
   const [upcomingDeadlines] = useState<UpcomingDeadline[]>([
     {
@@ -166,49 +129,10 @@ const HomeScreen: React.FC = () => {
     }, 1500);
   }, []);
 
-  // Helper function to get icon for activity type
-  const getActivityIcon = (type: RecentActivity['type']) => {
-    switch (type) {
-      case 'status_change':
-        return 'sync-outline';
-      case 'comment':
-        return 'chatbubble-outline';
-      case 'royalty_payment':
-        return 'cash-outline';
-      case 'submission':
-        return 'paper-plane-outline';
-      default:
-        return 'information-circle-outline';
-    }
-  };
-
-  // Helper function to get color for activity type
-  const getActivityColor = (type: RecentActivity['type']) => {
-    switch (type) {
-      case 'status_change':
-        return '#2196F3'; // Blue
-      case 'comment':
-        return '#4CAF50'; // Green
-      case 'royalty_payment':
-        return '#F27429'; // Orange (primary color)
-      case 'submission':
-        return '#9C27B0'; // Purple
-      default:
-        return '#9E9E9E'; // Grey
-    }
-  };
-
   // Helper function to format date and calculate days remaining
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
-  const handleActivityPress = (activity: RecentActivity) => {
-    if (activity.relatedPaperId) {
-      // Navigate to the paper details
-      navigateTo('RequestDetail', { requestId: activity.relatedPaperId });
-    }
   };
 
   const handleDeadlinePress = (deadline: UpcomingDeadline) => {
@@ -353,46 +277,6 @@ const HomeScreen: React.FC = () => {
             <View style={styles.emptyStateContainer}>
               <Ionicons name="calendar-outline" size={40} color="#ccc" />
               <Text style={styles.emptyStateText}>No upcoming deadlines</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Recent Activity */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-          </View>
-          
-          {recentActivities.length > 0 ? (
-            recentActivities.map(activity => (
-              <TouchableOpacity 
-                key={activity.id} 
-                style={styles.activityCard}
-                onPress={() => handleActivityPress(activity)}
-              >
-                <View style={[
-                  styles.activityIconContainer, 
-                  { backgroundColor: getActivityColor(activity.type) + '20' }
-                ]}>
-                  <Ionicons 
-                    name={getActivityIcon(activity.type)} 
-                    size={20} 
-                    color={getActivityColor(activity.type)} 
-                  />
-                </View>
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityTitle}>{activity.title}</Text>
-                  <Text style={styles.activityDescription} numberOfLines={2}>
-                    {activity.description}
-                  </Text>
-                  <Text style={styles.activityTimestamp}>{activity.timestamp}</Text>
-                </View>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.emptyStateContainer}>
-              <Ionicons name="notifications-outline" size={40} color="#ccc" />
-              <Text style={styles.emptyStateText}>No recent activity</Text>
             </View>
           )}
         </View>
@@ -595,46 +479,6 @@ const styles = StyleSheet.create({
   deadlineDaysLabel: {
     fontSize: 10,
     color: '#2196F3',
-  },
-  activityCard: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  activityIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  activityDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  activityTimestamp: {
-    fontSize: 12,
-    color: '#999',
   },
   emptyStateContainer: {
     alignItems: 'center',
