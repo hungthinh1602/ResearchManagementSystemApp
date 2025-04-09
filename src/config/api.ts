@@ -42,7 +42,7 @@ export const handleResponse = async (response: Response) => {
   if (!response.ok) {
     // Try to parse the error as JSON
     try {
-      const errorData = await response.json();
+      const errorData = await response.clone().json();
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     } catch (jsonError) {
       // If it's not JSON, get the text
@@ -56,7 +56,8 @@ export const handleResponse = async (response: Response) => {
   try {
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return await response.json();
+      const clonedResponse = response.clone();
+      return await clonedResponse.json();
     } else {
       // If not JSON, return the text
       const text = await response.text();

@@ -42,7 +42,15 @@ export interface InputFieldProps {
     CreateNewRequest: undefined;
     RequestDetail: { requestId: number; request: ResearchPaper };
     Requests: undefined;
-    // Add any other screens you have
+    Projects: undefined;
+    ProjectDetail: { projectId: number };
+    Home: undefined;
+    Notifications: undefined;
+    SignIn: undefined;
+    SignUp: undefined;
+    ForgotPassword: undefined;
+    ResetPassword: undefined;
+    ChangePassword: undefined;
   };
 
   // Make sure ResearchPaper interface is defined here or imported

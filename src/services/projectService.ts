@@ -44,9 +44,12 @@ export const projectService = {
   getProject: async (id: number) => {
     try {
       const authHeader = await getAuthHeader();
-      const response = await apiRequest(`/api/project/${id}`, {
+      const response = await apiRequest(`/api/project/get-project-by-projectId/${id}`, {
         method: 'GET',
-        headers: authHeader,
+        headers: {
+          ...authHeader,
+          'Accept': '*/*'
+        },
       });
       return response;
     } catch (error) {
