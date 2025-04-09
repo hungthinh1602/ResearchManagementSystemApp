@@ -1,568 +1,486 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  TouchableOpacity, 
-  Dimensions,
-  StatusBar,
-  Image
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
+import { projectService } from '../services/projectService';
 
 type RequestsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
-// Define the interface for our research paper data
-interface Author {
-  name: string;
-  role: string;
-  email: string;
+interface Project {
+  projectId: number;
+  projectName: string;
+  projectType: number;
+  description: string;
+  approvedBudget: number;
+  status: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string | null;
+  methodology: string | null;
+  createdBy: number;
+  approvedBy: number | null;
+  groupId: number;
+  groupName: string;
+  departmentId: number;
+  documents: Array<{
+    documentId: number;
+    fileName: string;
+    documentUrl: string;
+    documentType: number;
+    uploadAt: string;
+  }>;
 }
 
-interface Department {
-  id: number;
-  name: string;
-}
-
-interface Category {
-  id: number;
-  name: string;
-}
-
-interface Royalties {
+interface ProjectStats {
   total: number;
-  received: number;
-  pendingPayment: boolean;
-}
-
-interface ResearchPaper {
-  id: number;
-  type: string;
-  title: string;
-  abstract: string;
-  publisher: string;
-  department: Department;
-  category: Category;
-  status: string;
-  submissionDate: string;
-  publicationDate: string;
-  authors: Author[];
-  progress: number;
-  royalties: Royalties;
+  pending: number;
+  approved: number;
+  rejected: number;
 }
 
 export const RequestsScreen: React.FC = () => {
   const navigation = useNavigation<RequestsScreenNavigationProp>();
-  
-  // Helper function to navigate with proper typing
-  const navigateTo = (screen: keyof RootStackParamList, params?: any) => {
-    navigation.navigate(screen, params);
-  };
-  
-  // Mock data using the provided structure
-  const [requests] = useState<ResearchPaper[]>([
-    {
-      id: 1,
-      type: "Conference",
-      title: "Machine Learning Applications in Education",
-      abstract:
-        "This paper explores innovative applications of machine learning in educational technology, focusing on personalized learning systems and student performance prediction.",
-      publisher: "IEEE Transactions on Education",
-      department: {
-        id: 1,
-        name: "Computer Science",
-      },
-      category: {
-        id: 1,
-        name: "AI & Machine Learning",
-      },
-      status: "accepted",
-      submissionDate: "2024-02-15",
-      publicationDate: "2024-05-20",
-      authors: [
-        {
-          name: "Dr. Emily Smith",
-          role: "Main Author",
-          email: "emily.smith@university.edu",
-        },
-        {
-          name: "Dr. Michael Chen",
-          role: "Co-Author",
-          email: "michael.chen@university.edu",
-        },
-      ],
-      progress: 75,
-      royalties: {
-        total: 15000000,
-        received: 5000000,
-        pendingPayment: true,
-      },
-    },
-    {
-      id: 2,
-      type: "Journal",
-      title: "Digital Transformation in Manufacturing",
-      abstract:
-        "A comprehensive analysis of Industry 4.0 implementation challenges and solutions in Vietnamese manufacturing sector.",
-      publisher: "Journal of Manufacturing Technology Management",
-      department: {
-        id: 2,
-        name: "Information Technology",
-      },
-      category: {
-        id: 5,
-        name: "Digital Technology",
-      },
-      status: "published",
-      submissionDate: "2024-01-10",
-      publicationDate: "2024-04-15",
-      authors: [
-        {
-          name: "Prof. Sarah Johnson",
-          role: "Main Author",
-          email: "sarah.johnson@university.edu",
-        },
-        {
-          name: "Dr. Lisa Nguyen",
-          role: "Co-Author",
-          email: "lisa.nguyen@university.edu",
-        },
-      ],
-      progress: 100,
-      royalties: {
-        total: 25000000,
-        received: 25000000,
-        pendingPayment: false,
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [stats, setStats] = useState<ProjectStats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRequests = async () => {
+    try {
+      setError(null);
+      const response = await projectService.getMyProjects();
+      console.log('Projects response:', response);
+      if (response.statusCode === 200) {
+        setAllProjects(response.data);
+        // Filter to show all projects except Approved ones (status !== 1)
+        const nonApprovedProjects = response.data.filter((project: Project) => project.status !== 1);
+        setProjects(nonApprovedProjects);
+        
+        // Calculate stats
+        const newStats: ProjectStats = {
+          total: response.data.length,
+          pending: response.data.filter((p: Project) => p.status === 0).length,
+          approved: response.data.filter((p: Project) => p.status === 1).length,
+          rejected: response.data.filter((p: Project) => p.status === 2).length,
+        };
+        setStats(newStats);
+      } else {
+        setError(response.message || 'Failed to fetch projects');
       }
-    },
-    {
-      id: 3,
-      type: "Journal",
-      title: "Sustainable Energy Solutions for Urban Development",
-      abstract:
-        "An exploration of renewable energy integration in urban planning with case studies from developing countries.",
-      publisher: "Renewable and Sustainable Energy Reviews",
-      department: {
-        id: 3,
-        name: "Environmental Engineering",
-      },
-      category: {
-        id: 3,
-        name: "Sustainability",
-      },
-      status: "under review",
-      submissionDate: "2024-03-05",
-      publicationDate: "",
-      authors: [
-        {
-          name: "Dr. James Wilson",
-          role: "Main Author",
-          email: "james.wilson@university.edu",
-        },
-        {
-          name: "Prof. Anh Tran",
-          role: "Co-Author",
-          email: "anh.tran@university.edu",
-        },
-      ],
-      progress: 40,
-      royalties: {
-        total: 0,
-        received: 0,
-        pendingPayment: false,
+    } catch (error: any) {
+      console.error('Error fetching projects:', error);
+      if (error.message === 'No access token found') {
+        setError('Please sign in again to view your projects');
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please sign in again.',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => navigation.navigate('Auth')
+            }
+          ]
+        );
+      } else {
+        setError(error.message || 'An error occurred while fetching projects');
+        Alert.alert(
+          'Error',
+          'Failed to load projects. Please check your connection and try again.',
+          [{ text: 'OK' }]
+        );
       }
+    } finally {
+      setLoading(false);
     }
-  ]);
-  
-  const handleRequestPress = (item: ResearchPaper) => {
-    console.log('Request pressed:', item);
-    
-    navigateTo('RequestDetail', { 
-      requestId: item.id, 
-      request: item 
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  // Auto refresh every 10 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (!refreshing) { // Only fetch if not manually refreshing
+        console.log('Auto-refreshing requests...');
+        fetchRequests();
+      }
+    }, 10000); // 10 seconds
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [refreshing]);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchRequests().finally(() => setRefreshing(false));
+  }, []);
+
+  const handleRequestPress = (project: Project) => {
+    navigation.navigate('ProjectDetail', {
+      projectId: project.projectId,
     });
   };
-  
-  // Helper function to format currency
-  const formatCurrency = (amount: number) => {
+
+  const getProjectTypeText = (type: number) => {
+    switch (type) {
+      case 0:
+        return 'Research';
+      case 1:
+        return 'Development';
+      case 2:
+        return 'Other';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const formatBudget = (budget: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-  
-  // Helper function to get status color
-  const getStatusColor = (status: string) => {
-    switch(status.toLowerCase()) {
-      case 'published':
-        return '#4CAF50'; // Green
-      case 'accepted':
-        return '#2196F3'; // Blue
-      case 'under review':
-        return '#FF9800'; // Orange
-      case 'rejected':
-        return '#F44336'; // Red
-      default:
-        return '#9E9E9E'; // Grey
-    }
+    }).format(budget);
   };
 
-  // Helper function to get status icon
-  const getStatusIcon = (status: string) => {
-    switch(status.toLowerCase()) {
-      case 'published':
-        return 'checkmark-circle';
-      case 'accepted':
-        return 'thumbs-up';
-      case 'under review':
-        return 'hourglass';
-      case 'rejected':
-        return 'close-circle';
-      default:
-        return 'help-circle';
-    }
-  };
-
-  // Helper function to get paper type icon
-  const getPaperTypeIcon = (type: string) => {
-    switch(type.toLowerCase()) {
-      case 'conference':
-        return 'people';
-      case 'journal':
-        return 'journal';
-      case 'book':
-        return 'book';
-      default:
-        return 'document-text';
-    }
-  };
-
-  const renderListHeader = () => (
-    <View style={styles.listHeader}>
-      <Text style={styles.headerTitle}>Research Papers</Text>
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{requests.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{requests.filter(r => r.status === 'published').length}</Text>
-          <Text style={styles.statLabel}>Published</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{requests.filter(r => r.status === 'under review').length}</Text>
-          <Text style={styles.statLabel}>In Review</Text>
-        </View>
+  const renderStatsBar = () => (
+    <View style={styles.statsContainer}>
+      <View style={styles.statsItem}>
+        <Text style={styles.statsValue}>{stats.total}</Text>
+        <Text style={styles.statsLabel}>Total</Text>
+      </View>
+      <View style={styles.statsDivider} />
+      <View style={styles.statsItem}>
+        <Text style={[styles.statsValue, { color: '#FFA726' }]}>{stats.pending}</Text>
+        <Text style={styles.statsLabel}>Pending</Text>
+      </View>
+      <View style={styles.statsDivider} />
+      <View style={styles.statsItem}>
+        <Text style={[styles.statsValue, { color: '#4CAF50' }]}>{stats.approved}</Text>
+        <Text style={styles.statsLabel}>Approved</Text>
+      </View>
+      <View style={styles.statsDivider} />
+      <View style={styles.statsItem}>
+        <Text style={[styles.statsValue, { color: '#F44336' }]}>{stats.rejected}</Text>
+        <Text style={styles.statsLabel}>Rejected</Text>
       </View>
     </View>
   );
 
-  const renderEmptyList = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="document-text-outline" size={80} color="#ccc" />
-      <Text style={styles.emptyText}>No research papers found</Text>
-    </View>
+  const renderRequestItem = ({ item }: { item: Project }) => (
+    <TouchableOpacity
+      style={styles.requestItem}
+      onPress={() => handleRequestPress(item)}
+    >
+      <View style={styles.requestHeader}>
+        <Text style={styles.requestTitle}>{item.projectName}</Text>
+        <View style={[
+          styles.statusBadge, 
+          item.status === 0 ? styles.pendingBadge : styles.rejectedBadge
+        ]}>
+          <Text style={styles.statusText}>
+            {item.status === 0 ? 'Pending' : 'Rejected'}
+          </Text>
+        </View>
+      </View>
+      
+      <Text style={styles.requestType}>{getProjectTypeText(item.projectType)}</Text>
+      
+      <Text style={styles.requestDescription} numberOfLines={2}>
+        {item.description}
+      </Text>
+      
+      <View style={styles.requestDetails}>
+        <View style={styles.detailItem}>
+          <Ionicons name="people-outline" size={16} color="#666" />
+          <Text style={styles.detailText}>{item.groupName}</Text>
+        </View>
+        
+        <View style={styles.detailItem}>
+          <Ionicons name="calendar-outline" size={16} color="#666" />
+          <Text style={styles.detailText}>{formatDate(item.startDate)}</Text>
+        </View>
+        
+        <View style={styles.detailItem}>
+          <Ionicons name="cash-outline" size={16} color="#666" />
+          <Text style={styles.detailText}>{formatBudget(item.approvedBudget)}</Text>
+        </View>
+      </View>
+      
+      <View style={styles.requestFooter}>
+        <Text style={styles.requestDate}>
+          Created: {formatDate(item.createdAt)}
+        </Text>
+        <Ionicons name="chevron-forward" size={20} color="#ccc" />
+      </View>
+    </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#F27429" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={64} color="#FF3B30" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => {
+            setLoading(true);
+            fetchRequests();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f7" />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Project Requests</Text>
+        <Text style={styles.headerSubtitle}>
+          {projects.length} {projects.length === 1 ? 'request' : 'requests'} to review
+        </Text>
+      </View>
 
-      <FlatList
-        data={requests}
-        keyExtractor={(item) => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={renderListHeader}
-        ListEmptyComponent={renderEmptyList}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.card}
-            onPress={() => handleRequestPress(item)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardTop}>
-              <View style={styles.typeContainer}>
-                <Ionicons name={getPaperTypeIcon(item.type)} size={16} color="#555" />
-                <Text style={styles.typeText}>{item.type}</Text>
-              </View>
-              <View style={[styles.statusContainer, { backgroundColor: getStatusColor(item.status) }]}>
-                <Ionicons name={getStatusIcon(item.status)} size={14} color="#fff" />
-                <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
-              </View>
-            </View>
-            
-            <Text style={styles.title}>{item.title}</Text>
-            
-            <Text style={styles.abstractText} numberOfLines={2}>
-              {item.abstract}
-            </Text>
-            
-            <View style={styles.metadataContainer}>
-              <View style={styles.metadataItem}>
-                <Ionicons name="business-outline" size={14} color="#666" />
-                <Text style={styles.metadataText}>{item.department.name}</Text>
-              </View>
-              
-              <View style={styles.metadataItem}>
-                <Ionicons name="pricetag-outline" size={14} color="#666" />
-                <Text style={styles.metadataText}>{item.category.name}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.progressContainer}>
-              <View style={styles.progressInfo}>
-                <Text style={styles.progressLabel}>Progress</Text>
-                <Text style={styles.progressPercentage}>{item.progress}%</Text>
-              </View>
-              <View style={styles.progressBarBackground}>
-                <View 
-                  style={[
-                    styles.progressBarFill, 
-                    { width: `${item.progress}%` }
-                  ]} 
-                />
-              </View>
-            </View>
-            
-            <View style={styles.cardFooter}>
-              <View style={styles.authorsPreview}>
-                {item.authors.slice(0, 2).map((author, index) => (
-                  <View key={index} style={styles.authorBadge}>
-                    <Text style={styles.authorInitial}>{author.name.charAt(0)}</Text>
-                  </View>
-                ))}
-                {item.authors.length > 2 && (
-                  <View style={[styles.authorBadge, styles.authorMore]}>
-                    <Text style={styles.authorInitial}>+{item.authors.length - 2}</Text>
-          </View>
-        )}
-              </View>
-              
-              {item.royalties.total > 0 && (
-                <View style={styles.royaltiesPreview}>
-                  <Ionicons name="cash-outline" size={14} color="#F27429" />
-                  <Text style={styles.royaltiesText}>
-                    {formatCurrency(item.royalties.received)} / {formatCurrency(item.royalties.total)}
-                  </Text>
-                </View>
-              )}
-            </View>
-      </TouchableOpacity>
-        )}
-      />
+      {renderStatsBar()}
+
+      {projects.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="document-text-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyText}>No requests found</Text>
+          <Text style={styles.emptySubtext}>
+            Your approved projects will appear in the Projects tab
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={projects}
+          renderItem={renderRequestItem}
+          keyExtractor={(item) => item.projectId.toString()}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#F27429']} />
+          }
+        />
+      )}
     </View>
   );
 };
-
-const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f7',
   },
-  listHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#333',
-    marginBottom: 16,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 4,
   },
   statsContainer: {
     flexDirection: 'row',
+    backgroundColor: '#fff',
+    padding: 16,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  statsItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statsValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+  },
+  statsLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  statsDivider: {
+    width: 1,
+    backgroundColor: '#eee',
+    marginHorizontal: 8,
+  },
+  listContent: {
+    padding: 16,
+  },
+  requestItem: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#F27429',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-  },
-  listContent: {
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 16,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardTop: {
+  requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  typeContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
+    marginBottom: 8,
   },
-  typeText: {
-    fontSize: 12,
+  requestTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#555',
-    marginLeft: 4,
+    color: '#333',
+    flex: 1,
+    marginRight: 8,
   },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
+  },
+  pendingBadge: {
+    backgroundColor: '#FFA726',
+  },
+  rejectedBadge: {
+    backgroundColor: '#F44336',
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600',
     color: '#fff',
-    marginLeft: 4,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 8,
-    lineHeight: 24,
-  },
-  abstractText: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-    lineHeight: 20,
+    fontWeight: '600',
   },
-  metadataContainer: {
+  requestType: {
+    fontSize: 14,
+    color: '#F27429',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  requestDescription: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 12,
+    lineHeight: 22,
+  },
+  requestDetails: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 12,
   },
-  metadataItem: {
+  detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginRight: 8,
+    marginRight: 16,
     marginBottom: 8,
   },
-  metadataText: {
-    fontSize: 12,
+  detailText: {
+    fontSize: 14,
     color: '#666',
     marginLeft: 4,
   },
-  progressContainer: {
-    marginBottom: 16,
-  },
-  progressInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  progressLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-  },
-  progressPercentage: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F27429',
-  },
-  progressBarBackground: {
-    height: 6,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#F27429',
-    borderRadius: 3,
-  },
-  cardFooter: {
+  requestFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 12,
   },
-  authorsPreview: {
-    flexDirection: 'row',
+  requestDate: {
+    fontSize: 14,
+    color: '#666',
   },
-  authorBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#2196F3',
+  emptyContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: -8,
-    borderWidth: 2,
-    borderColor: '#fff',
+    padding: 32,
   },
-  authorMore: {
-    backgroundColor: '#e0e0e0',
-  },
-  authorInitial: {
-    fontSize: 12,
+  emptyText: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
   },
-  royaltiesPreview: {
-    flexDirection: 'row',
+  emptySubtext: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFF8E1',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    padding: 32,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#F27429',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 8,
   },
-  royaltiesText: {
-    fontSize: 12,
-    color: '#F27429',
-    fontWeight: '500',
-    marginLeft: 4,
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
