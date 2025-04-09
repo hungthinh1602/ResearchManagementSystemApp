@@ -29,7 +29,7 @@ export const API_ENDPOINTS = {
   },
   PROJECT: {
     GET_MY_PROJECTS: '/api/project/get-my-projects',
-    GET_PROJECT: (id: number) => `/api/project/${id}`,
+    GET_PROJECT: (id: number) => `/api/project/get-project-by-projectId/${id}`,
     CREATE_PROJECT: '/api/project',
     UPDATE_PROJECT: (id: number) => `/api/project/${id}`,
     DELETE_PROJECT: (id: number) => `/api/project/${id}`,
