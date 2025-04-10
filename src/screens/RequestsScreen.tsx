@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,12 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
-import { projectService } from '../services/projectService';
+import { apiRequest, API_ENDPOINTS } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RequestsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -28,19 +29,9 @@ interface Project {
   endDate: string;
   createdAt: string;
   updatedAt: string | null;
-  methodology: string | null;
-  createdBy: number;
-  approvedBy: number | null;
   groupId: number;
   groupName: string;
   departmentId: number;
-  documents: Array<{
-    documentId: number;
-    fileName: string;
-    documentUrl: string;
-    documentType: number;
-    uploadAt: string;
-  }>;
 }
 
 interface ProjectStats {
@@ -52,8 +43,7 @@ interface ProjectStats {
 
 export const RequestsScreen: React.FC = () => {
   const navigation = useNavigation<RequestsScreenNavigationProp>();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [requests, setRequests] = useState<Project[]>([]);
   const [stats, setStats] = useState<ProjectStats>({
     total: 0,
     pending: 0,
@@ -64,76 +54,110 @@ export const RequestsScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (showLoading = true) => {
     try {
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
-      const response = await projectService.getMyProjects();
-      console.log('Projects response:', response);
+
+      const userDataString = await AsyncStorage.getItem('userData');
+      if (!userDataString) {
+        setError('Please sign in to view requests');
+        Alert.alert(
+          'Authentication Required',
+          'Please sign in to view requests',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const userData = JSON.parse(userDataString);
+      const token = userData.accessToken;
+      
+      if (!token) {
+        setError('Please sign in to view requests');
+        Alert.alert(
+          'Authentication Required',
+          'Please sign in to view requests',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const response = await apiRequest(
+        API_ENDPOINTS.PROJECT.GET_MY_PROJECTS,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': '*/*',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
       if (response.statusCode === 200) {
-        setAllProjects(response.data);
-        // Filter to show all projects except Approved ones (status !== 1)
-        const nonApprovedProjects = response.data.filter((project: Project) => project.status !== 1);
-        setProjects(nonApprovedProjects);
-        
-        // Calculate stats
+        // Calculate stats from all projects
+        const allProjects = response.data;
         const newStats: ProjectStats = {
-          total: response.data.length,
-          pending: response.data.filter((p: Project) => p.status === 0).length,
-          approved: response.data.filter((p: Project) => p.status === 1).length,
-          rejected: response.data.filter((p: Project) => p.status === 2).length,
+          total: allProjects.length,
+          pending: allProjects.filter((p: Project) => p.status === 0).length,
+          approved: allProjects.filter((p: Project) => p.status === 1).length,
+          rejected: allProjects.filter((p: Project) => p.status === 2).length,
         };
         setStats(newStats);
-      } else {
-        setError(response.message || 'Failed to fetch projects');
-      }
-    } catch (error: any) {
-      console.error('Error fetching projects:', error);
-      if (error.message === 'No access token found') {
-        setError('Please sign in again to view your projects');
+        
+        // Filter to show only pending projects (status === 0)
+        const pendingProjects = allProjects.filter((project: Project) => project.status === 0);
+        setRequests(pendingProjects);
+      } else if (response.statusCode === 401) {
+        setError('Your session has expired. Please sign in again.');
         Alert.alert(
           'Session Expired',
           'Your session has expired. Please sign in again.',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => navigation.navigate('Auth')
-            }
-          ]
-        );
-      } else {
-        setError(error.message || 'An error occurred while fetching projects');
-        Alert.alert(
-          'Error',
-          'Failed to load projects. Please check your connection and try again.',
           [{ text: 'OK' }]
         );
+      } else {
+        setError(response.message || 'Failed to fetch requests');
+      }
+    } catch (error: any) {
+      console.error('Error fetching requests:', error);
+      if (error.message.includes('401')) {
+        setError('Your session has expired. Please sign in again.');
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please sign in again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        setError(error.message || 'An error occurred while fetching requests');
       }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
-  // Initial fetch
+  // Initial load
   useEffect(() => {
     fetchRequests();
   }, []);
 
-  // Auto refresh every 10 seconds
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (!refreshing) { // Only fetch if not manually refreshing
-        console.log('Auto-refreshing requests...');
-        fetchRequests();
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Only fetch if we already have data (to avoid double fetch on initial load)
+      if (requests.length > 0) {
+        fetchRequests(false);
       }
-    }, 10000); // 10 seconds
+    }, [requests.length])
+  );
 
-    // Cleanup interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [refreshing]);
-
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchRequests().finally(() => setRefreshing(false));
+    fetchRequests(false).finally(() => setRefreshing(false));
   }, []);
 
   const handleRequestPress = (project: Project) => {
@@ -164,84 +188,59 @@ export const RequestsScreen: React.FC = () => {
     });
   };
 
-  const formatBudget = (budget: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(budget);
-  };
-
-  const renderStatsBar = () => (
-    <View style={styles.statsContainer}>
-      <View style={styles.statsItem}>
-        <Text style={styles.statsValue}>{stats.total}</Text>
-        <Text style={styles.statsLabel}>Total</Text>
-      </View>
-      <View style={styles.statsDivider} />
-      <View style={styles.statsItem}>
-        <Text style={[styles.statsValue, { color: '#FFA726' }]}>{stats.pending}</Text>
-        <Text style={styles.statsLabel}>Pending</Text>
-      </View>
-      <View style={styles.statsDivider} />
-      <View style={styles.statsItem}>
-        <Text style={[styles.statsValue, { color: '#4CAF50' }]}>{stats.approved}</Text>
-        <Text style={styles.statsLabel}>Approved</Text>
-      </View>
-      <View style={styles.statsDivider} />
-      <View style={styles.statsItem}>
-        <Text style={[styles.statsValue, { color: '#F44336' }]}>{stats.rejected}</Text>
-        <Text style={styles.statsLabel}>Rejected</Text>
-      </View>
-    </View>
-  );
-
   const renderRequestItem = ({ item }: { item: Project }) => (
     <TouchableOpacity
-      style={styles.requestItem}
+      style={styles.requestCard}
       onPress={() => handleRequestPress(item)}
     >
-      <View style={styles.requestHeader}>
-        <Text style={styles.requestTitle}>{item.projectName}</Text>
-        <View style={[
-          styles.statusBadge, 
-          item.status === 0 ? styles.pendingBadge : styles.rejectedBadge
-        ]}>
-          <Text style={styles.statusText}>
-            {item.status === 0 ? 'Pending' : 'Rejected'}
-          </Text>
+      <View style={styles.cardHeader}>
+        <Text style={styles.projectName}>{item.projectName}</Text>
+        <View style={styles.typeBadge}>
+          <Text style={styles.typeText}>{getProjectTypeText(item.projectType)}</Text>
         </View>
       </View>
       
-      <Text style={styles.requestType}>{getProjectTypeText(item.projectType)}</Text>
-      
-      <Text style={styles.requestDescription} numberOfLines={2}>
+      <Text style={styles.description} numberOfLines={2}>
         {item.description}
       </Text>
       
-      <View style={styles.requestDetails}>
-        <View style={styles.detailItem}>
+      <View style={styles.cardFooter}>
+        <View style={styles.footerInfo}>
           <Ionicons name="people-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{item.groupName}</Text>
+          <Text style={styles.groupName}>{item.groupName}</Text>
         </View>
-        
-        <View style={styles.detailItem}>
+        <View style={styles.footerInfo}>
           <Ionicons name="calendar-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{formatDate(item.startDate)}</Text>
+          <Text style={styles.date}>{formatDate(item.startDate)}</Text>
         </View>
-        
-        <View style={styles.detailItem}>
-          <Ionicons name="cash-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{formatBudget(item.approvedBudget)}</Text>
-        </View>
-      </View>
-      
-      <View style={styles.requestFooter}>
-        <Text style={styles.requestDate}>
-          Created: {formatDate(item.createdAt)}
-        </Text>
-        <Ionicons name="chevron-forward" size={20} color="#ccc" />
       </View>
     </TouchableOpacity>
+  );
+
+  const renderStatsBar = () => (
+    <View style={styles.statsContainer}>
+      <View style={styles.statsCard}>
+        <View style={styles.statsItem}>
+          <Text style={styles.statsValue}>{stats.total}</Text>
+          <Text style={styles.statsLabel}>Total</Text>
+        </View>
+        <View style={styles.statsDivider} />
+        <View style={styles.statsItem}>
+          <Text style={[styles.statsValue, { color: '#F27429' }]}>{stats.pending}</Text>
+          <Text style={styles.statsLabel}>Pending</Text>
+        </View>
+        <View style={styles.statsDivider} />
+        <View style={styles.statsItem}>
+          <Text style={[styles.statsValue, { color: '#4CAF50' }]}>{stats.approved}</Text>
+          <Text style={styles.statsLabel}>Approved</Text>
+        </View>
+        <View style={styles.statsDivider} />
+        <View style={styles.statsItem}>
+          <Text style={[styles.statsValue, { color: '#FF3B30' }]}>{stats.rejected}</Text>
+          <Text style={styles.statsLabel}>Rejected</Text>
+        </View>
+      </View>
+    </View>
   );
 
   if (loading) {
@@ -259,10 +258,7 @@ export const RequestsScreen: React.FC = () => {
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={() => {
-            setLoading(true);
-            fetchRequests();
-          }}
+          onPress={() => fetchRequests()}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
@@ -272,34 +268,27 @@ export const RequestsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Project Requests</Text>
-        <Text style={styles.headerSubtitle}>
-          {projects.length} {projects.length === 1 ? 'request' : 'requests'} to review
-        </Text>
-      </View>
-
       {renderStatsBar()}
-
-      {projects.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyText}>No requests found</Text>
-          <Text style={styles.emptySubtext}>
-            Your approved projects will appear in the Projects tab
-          </Text>
-        </View>
-      ) : (
       <FlatList
-          data={projects}
-          renderItem={renderRequestItem}
-          keyExtractor={(item) => item.projectId.toString()}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#F27429']} />
-          }
-        />
-      )}
+        data={requests}
+        renderItem={renderRequestItem}
+        keyExtractor={(item) => item.projectId.toString()}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#F27429']}
+            tintColor="#F27429"
+          />
+        }
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="documents-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>No pending requests found</Text>
+          </View>
+        )}
+      />
     </View>
   );
 };
@@ -313,30 +302,129 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  header: {
-    padding: 16,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+  listContainer: {
+    padding: 16,
+    paddingBottom: 24,
+  },
+  requestCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  projectName: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#333',
+    flex: 1,
+    marginRight: 12,
   },
-  headerSubtitle: {
+  typeBadge: {
+    backgroundColor: '#F27429',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  typeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  description: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupName: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 6,
+  },
+  date: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 6,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: '#fff',
+  },
+  errorText: {
     fontSize: 16,
     color: '#666',
-    marginTop: 4,
+    marginTop: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  retryButton: {
+    backgroundColor: '#F27429',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: '#F27429',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+    textAlign: 'center',
   },
   statsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  statsCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statsItem: {
     flex: 1,
@@ -349,138 +437,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statsLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
+    fontWeight: '500',
   },
   statsDivider: {
     width: 1,
     backgroundColor: '#eee',
     marginHorizontal: 8,
-  },
-  listContent: {
-    padding: 16,
-  },
-  requestItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  requestTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    flex: 1,
-    marginRight: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  pendingBadge: {
-    backgroundColor: '#FFA726',
-  },
-  rejectedBadge: {
-    backgroundColor: '#F44336',
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  requestType: {
-    fontSize: 14,
-    color: '#F27429',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  requestDescription: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 12,
-    lineHeight: 22,
-  },
-  requestDetails: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 8,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  requestFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    paddingTop: 12,
-  },
-  requestDate: {
-    fontSize: 14,
-    color: '#666',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#F27429',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 
