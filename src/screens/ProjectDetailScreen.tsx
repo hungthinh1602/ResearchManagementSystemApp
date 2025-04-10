@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
+  RefreshControl,
 } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useRoute, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from './types';
 import { apiRequest, API_ENDPOINTS } from '../config/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,14 +83,16 @@ export const ProjectDetailScreen: React.FC = () => {
   const { projectId } = route.params;
   const [project, setProject] = useState<ProjectResponse['data'] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProjectDetails = async () => {
+  const fetchProjectDetails = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
 
-      // Get the access token from userData
       const userDataString = await AsyncStorage.getItem('userData');
       if (!userDataString) {
         setError('Please sign in to view project details');
@@ -126,8 +129,6 @@ export const ProjectDetailScreen: React.FC = () => {
         }
       );
 
-      console.log('Project details response:', response);
-
       if (response.statusCode === 200 && response.data) {
         setProject(response.data);
       } else if (response.statusCode === 401) {
@@ -153,12 +154,30 @@ export const ProjectDetailScreen: React.FC = () => {
         setError(error.message || 'An error occurred while fetching project details');
       }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
+  // Initial load
   useEffect(() => {
     fetchProjectDetails();
+  }, [projectId]);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Only fetch if we already have data (to avoid double fetch on initial load)
+      if (project) {
+        fetchProjectDetails(false);
+      }
+    }, [projectId])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchProjectDetails(false).finally(() => setRefreshing(false));
   }, [projectId]);
 
   const getProjectTypeText = (type: number) => {
@@ -256,7 +275,7 @@ export const ProjectDetailScreen: React.FC = () => {
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={fetchProjectDetails}
+          onPress={() => fetchProjectDetails()}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
@@ -274,33 +293,49 @@ export const ProjectDetailScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#F27429']}
+          tintColor="#F27429"
+        />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.projectName}>{project.projectName || 'Untitled Project'}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(project.status) }]}>
-          <Text style={styles.statusText}>{getStatusText(project.status)}</Text>
+        <View style={styles.statusBadge}>
+          <Text style={[styles.statusText, { color: getStatusColor(project.status) }]}>
+            {getStatusText(project.status)}
+          </Text>
         </View>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Project Information</Text>
         <View style={styles.infoRow}>
+          <Ionicons name="document-text-outline" size={20} color="#F27429" style={{ marginRight: 8 }} />
           <Text style={styles.infoLabel}>Type:</Text>
           <Text style={styles.infoValue}>{getProjectTypeText(project.projectType)}</Text>
         </View>
         {project.department && (
           <View style={styles.infoRow}>
+            <Ionicons name="business-outline" size={20} color="#F27429" style={{ marginRight: 8 }} />
             <Text style={styles.infoLabel}>Department:</Text>
             <Text style={styles.infoValue}>{project.department.departmentName}</Text>
           </View>
         )}
         {project.group && (
           <View style={styles.infoRow}>
+            <Ionicons name="people-outline" size={20} color="#F27429" style={{ marginRight: 8 }} />
             <Text style={styles.infoLabel}>Group:</Text>
             <Text style={styles.infoValue}>{project.group.groupName}</Text>
           </View>
         )}
         <View style={styles.infoRow}>
+          <Ionicons name="wallet-outline" size={20} color="#F27429" style={{ marginRight: 8 }} />
           <Text style={styles.infoLabel}>Budget:</Text>
           <Text style={styles.infoValue}>{formatBudget(project.approvedBudget)}</Text>
         </View>
@@ -424,56 +459,67 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
   header: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F27429',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    flexDirection: 'column',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 16,
   },
   projectName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#333',
-    flex: 1,
-    marginRight: 16,
+    color: '#fff',
+    marginBottom: 12,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignSelf: 'flex-start',
   },
   statusText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    color: '#F27429',
   },
   section: {
     backgroundColor: '#fff',
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#333',
-    marginBottom: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F27429',
+    paddingLeft: 12,
   },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 12,
+    alignItems: 'center',
   },
   infoLabel: {
-    width: 100,
+    width: 120,
     fontSize: 16,
     color: '#666',
     fontWeight: '500',
@@ -482,60 +528,69 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    fontWeight: '500',
   },
   description: {
     fontSize: 16,
     color: '#333',
     lineHeight: 24,
+    backgroundColor: '#f9f9f9',
+    padding: 16,
+    borderRadius: 12,
   },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f8f8',
-    padding: 12,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   userDetails: {
-    marginLeft: 12,
+    marginLeft: 16,
     flex: 1,
   },
   userName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#333',
   },
   userEmail: {
     fontSize: 14,
     color: '#666',
-    marginTop: 2,
+    marginTop: 4,
   },
   documentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
     backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    marginBottom: 8,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   documentInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 16,
   },
   documentName: {
     fontSize: 16,
     color: '#333',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   documentDate: {
     fontSize: 14,
     color: '#666',
-    marginTop: 2,
+    marginTop: 4,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+    backgroundColor: '#fff',
   },
   errorText: {
     fontSize: 16,
@@ -543,12 +598,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
     marginBottom: 16,
+    lineHeight: 24,
   },
   retryButton: {
     backgroundColor: '#F27429',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: '#F27429',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   retryButtonText: {
     color: '#fff',
