@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 // Base API URL - using ngrok URL for development
-export const API_BASE_URL = 'https://af11-2405-4802-a39c-9ba0-a5a9-177f-c7f-73ff.ngrok-free.app';
+export const API_BASE_URL = 'https://715f-118-69-70-166.ngrok-free.app';
 
 // Common headers for all API requests
 export const DEFAULT_HEADERS = {
@@ -30,8 +30,8 @@ export const API_ENDPOINTS = {
   PROJECT: {
     GET_MY_PROJECTS: '/api/project/get-my-projects',
     GET_PROJECT: (id: number) => `/api/project/get-project-by-projectId/${id}`,
+    GET_PROJECT_DETAIL: (id: number) => `/api/project/details/${id}`,
     CREATE_PROJECT: '/api/project',
-    UPDATE_PROJECT: (id: number) => `/api/project/${id}`,
     DELETE_PROJECT: (id: number) => `/api/project/${id}`,
   },
 };
