@@ -58,6 +58,8 @@ export const ProjectScreen: React.FC = () => {
       if (response.statusCode === 200) {
         // Filter to only show Approved projects (status === 1)
         const approvedProjects = response.data.filter((project: Project) => project.status === 1);
+        const departmentIds = response.data.map((project: Project) => project.departmentId);
+        console.log('Department IDs:', departmentIds);
         setProjects(approvedProjects);
       } else {
         setError(response.message || 'Failed to fetch projects');
