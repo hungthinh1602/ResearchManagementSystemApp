@@ -1,7 +1,8 @@
 import { Platform } from 'react-native';
 
 // Base API URL - using ngrok URL for development
-export const API_BASE_URL = 'https://715f-118-69-70-166.ngrok-free.app';
+// export const API_BASE_URL = 'https://lrms-api-hgdyf4ere7gmbff5.canadacentral-01.azurewebsites.net';
+export const API_BASE_URL = 'https://719d-14-241-253-108.ngrok-free.app';
 
 // Common headers for all API requests
 export const DEFAULT_HEADERS = {
