@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,110 +9,63 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from './types';
-import { projectService } from '../services/projectService';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../store';
+import { fetchProjects, Project } from '../store/slices/projectSlice';
 
 type ProjectScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
-interface Project {
-  projectId: number;
-  projectName: string;
-  projectType: number;
-  description: string;
-  approvedBudget: number;
-  status: number;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string | null;
-  methodology: string | null;
-  createdBy: number;
-  approvedBy: number | null;
-  groupId: number;
-  groupName: string;
-  departmentId: number;
-  documents: Array<{
-    documentId: number;
-    fileName: string;
-    documentUrl: string;
-    documentType: number;
-    uploadAt: string;
-  }>;
-}
-
 export const ProjectScreen: React.FC = () => {
   const navigation = useNavigation<ProjectScreenNavigationProp>();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useDispatch<AppDispatch>();
+  const { projects, stats, loading, error } = useSelector((state: RootState) => state.project);
+  const [refreshing, setRefreshing] = React.useState(false);
 
-  const fetchProjects = async () => {
+  // Filter to show only approved projects
+  const approvedProjects = projects.filter(project => project.status === 1);
+
+  const loadProjects = useCallback(async (showLoading = true) => {
     try {
-      setError(null);
-      const response = await projectService.getMyProjects();
-      console.log('Projects response:', response);
-      if (response.statusCode === 200) {
-        // Filter to only show Approved projects (status === 1)
-        const approvedProjects = response.data.filter((project: Project) => project.status === 1);
-        const departmentIds = response.data.map((project: Project) => project.departmentId);
-        console.log('Department IDs:', departmentIds);
-        setProjects(approvedProjects);
-      } else {
-        setError(response.message || 'Failed to fetch projects');
-      }
+      await dispatch(fetchProjects()).unwrap();
     } catch (error: any) {
-      console.error('Error fetching projects:', error);
-      if (error.message === 'No access token found') {
-        setError('Please sign in again to view your projects');
+      if (error.includes('session has expired')) {
         Alert.alert(
           'Session Expired',
           'Your session has expired. Please sign in again.',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => navigation.navigate('Auth')
-            }
-          ]
+          [{ text: 'OK' }]
         );
       } else {
-        setError(error.message || 'An error occurred while fetching projects');
         Alert.alert(
           'Error',
           'Failed to load projects. Please check your connection and try again.',
           [{ text: 'OK' }]
         );
       }
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [dispatch]);
 
-  // Initial fetch
+  // Initial load
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    loadProjects();
+  }, [loadProjects]);
 
-  // Auto refresh every 10 seconds
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (!refreshing) { // Only fetch if not manually refreshing
-        console.log('Auto-refreshing projects...');
-        fetchProjects();
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (projects.length > 0) {
+        loadProjects(false);
       }
-    }, 10000); // 10 seconds
+    }, [projects.length, loadProjects])
+  );
 
-    // Cleanup interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [refreshing]);
-
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchProjects().finally(() => setRefreshing(false));
-  }, []);
+    loadProjects(false).finally(() => setRefreshing(false));
+  }, [loadProjects]);
 
   const handleProjectPress = (project: Project) => {
     navigation.navigate('ProjectDetail', {
@@ -142,58 +95,47 @@ export const ProjectScreen: React.FC = () => {
     });
   };
 
-  const formatBudget = (budget: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(budget);
-  };
-
   const renderProjectItem = ({ item }: { item: Project }) => (
     <TouchableOpacity
-      style={styles.projectItem}
+      style={styles.projectCard}
       onPress={() => handleProjectPress(item)}
     >
-      <View style={styles.projectHeader}>
-        <Text style={styles.projectTitle}>{item.projectName}</Text>
+      <View style={styles.cardHeader}>
+        <Text style={styles.projectName}>{item.projectName}</Text>
         <View style={styles.statusBadge}>
           <Text style={styles.statusText}>Approved</Text>
         </View>
       </View>
       
-      <Text style={styles.projectType}>{getProjectTypeText(item.projectType)}</Text>
-      
-      <Text style={styles.projectDescription} numberOfLines={2}>
+      <Text style={styles.description} numberOfLines={2}>
         {item.description}
       </Text>
       
-      <View style={styles.projectDetails}>
-        <View style={styles.detailItem}>
+      <View style={styles.cardFooter}>
+        <View style={styles.footerInfo}>
           <Ionicons name="people-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{item.groupName}</Text>
+          <Text style={styles.groupName}>{item.groupName}</Text>
         </View>
-        
-        <View style={styles.detailItem}>
+        <View style={styles.footerInfo}>
           <Ionicons name="calendar-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{formatDate(item.startDate)}</Text>
+          <Text style={styles.date}>{formatDate(item.startDate)}</Text>
         </View>
-        
-        <View style={styles.detailItem}>
-          <Ionicons name="cash-outline" size={16} color="#666" />
-          <Text style={styles.detailText}>{formatBudget(item.approvedBudget)}</Text>
-        </View>
-      </View>
-      
-      <View style={styles.projectFooter}>
-        <Text style={styles.projectDate}>
-          Created: {formatDate(item.createdAt)}
-        </Text>
-        <Ionicons name="chevron-forward" size={20} color="#ccc" />
       </View>
     </TouchableOpacity>
   );
 
-  if (loading) {
+  const renderStatsBar = () => (
+    <View style={styles.statsContainer}>
+      <View style={styles.statsCard}>
+        <View style={styles.statsItem}>
+          <Text style={styles.statsValue}>{approvedProjects.length}</Text>
+          <Text style={styles.statsLabel}>Approved Projects</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#F27429" />
@@ -208,10 +150,7 @@ export const ProjectScreen: React.FC = () => {
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={() => {
-            setLoading(true);
-            fetchProjects();
-          }}
+          onPress={() => loadProjects()}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
@@ -221,32 +160,27 @@ export const ProjectScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Approved Projects</Text>
-        <Text style={styles.headerSubtitle}>
-          {projects.length} {projects.length === 1 ? 'project' : 'projects'} in progress
-        </Text>
-      </View>
-
-      {projects.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyText}>No approved projects found</Text>
-          <Text style={styles.emptySubtext}>
-            Your pending projects will appear in the Requests tab
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={projects}
-          renderItem={renderProjectItem}
-          keyExtractor={(item) => item.projectId.toString()}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#F27429']} />
-          }
-        />
-      )}
+      {renderStatsBar()}
+      <FlatList
+        data={approvedProjects}
+        renderItem={renderProjectItem}
+        keyExtractor={(item) => item.projectId.toString()}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#F27429']}
+            tintColor="#F27429"
+          />
+        }
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="documents-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>No approved projects found</Text>
+          </View>
+        )}
+      />
     </View>
   );
 };
@@ -260,124 +194,78 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  header: {
-    padding: 16,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 4,
-  },
-  listContent: {
+  listContainer: {
     padding: 16,
+    paddingBottom: 24,
   },
-  projectItem: {
+  projectCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
-  projectHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  projectTitle: {
+  projectName: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
     flex: 1,
-    marginRight: 8,
+    marginRight: 12,
   },
   statusBadge: {
     backgroundColor: '#4CAF50',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
   },
   statusText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
-  projectType: {
-    fontSize: 14,
-    color: '#F27429',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  projectDescription: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 12,
-    lineHeight: 22,
-  },
-  projectDetails: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 8,
-  },
-  detailText: {
+  description: {
     fontSize: 14,
     color: '#666',
-    marginLeft: 4,
+    lineHeight: 20,
+    marginBottom: 16,
   },
-  projectFooter: {
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    paddingTop: 12,
   },
-  projectDate: {
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupName: {
     fontSize: 14,
     color: '#666',
+    marginLeft: 6,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 16,
+  date: {
+    fontSize: 14,
     color: '#666',
-    textAlign: 'center',
+    marginLeft: 6,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+    backgroundColor: '#fff',
   },
   errorText: {
     fontSize: 16,
@@ -385,17 +273,65 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
     marginBottom: 16,
+    lineHeight: 24,
   },
   retryButton: {
     backgroundColor: '#F27429',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: '#F27429',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  statsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  statsCard: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statsItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statsValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4CAF50',
+    marginBottom: 4,
+  },
+  statsLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
   },
 });
 

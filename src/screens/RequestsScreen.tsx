@@ -179,6 +179,32 @@ export const RequestsScreen: React.FC = () => {
     }
   };
 
+  const getStatusText = (status: number) => {
+    switch (status) {
+      case 0:
+        return 'Pending';
+      case 1:
+        return 'Approved';
+      case 2:
+        return 'Rejected';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const getStatusColor = (status: number) => {
+    switch (status) {
+      case 0:
+        return '#F27429';
+      case 1:
+        return '#4CAF50';
+      case 2:
+        return '#FF3B30';
+      default:
+        return '#666';
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -195,9 +221,13 @@ export const RequestsScreen: React.FC = () => {
     >
       <View style={styles.cardHeader}>
         <Text style={styles.projectName}>{item.projectName}</Text>
-        <View style={styles.typeBadge}>
-          <Text style={styles.typeText}>{getProjectTypeText(item.projectType)}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
+      </View>
+      
+      <View style={styles.typeContainer}>
+        <Text style={styles.typeText}>{getProjectTypeText(item.projectType)}</Text>
       </View>
       
       <Text style={styles.description} numberOfLines={2}>
@@ -323,7 +353,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   projectName: {
     fontSize: 18,
@@ -332,16 +362,23 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  typeBadge: {
-    backgroundColor: '#F27429',
+  statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  typeText: {
+  statusText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  typeContainer: {
+    marginBottom: 8,
+  },
+  typeText: {
+    fontSize: 14,
+    color: '#F27429',
+    fontWeight: '500',
   },
   description: {
     fontSize: 14,
