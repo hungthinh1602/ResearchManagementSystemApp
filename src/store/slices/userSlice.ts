@@ -1,6 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import type { EndpointBuilder } from '@reduxjs/toolkit/query';
-import { apiSlice } from "../api/apiSlice";
+import { apiSlice } from "../../features/api/apiSlice";
 import { API_ENDPOINTS } from "../../config/api";
 
 interface UserData {
@@ -220,4 +220,4 @@ export const {
   useUpdateUserProfileMutation,
   useChangePasswordMutation,
   useGetUsersByDepartmentQuery
-} = userApiSlice;
+} = userApiSlice; 
