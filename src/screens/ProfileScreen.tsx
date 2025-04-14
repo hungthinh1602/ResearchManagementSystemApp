@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useGetUserProfileQuery } from '../features/user/userSlice';
+import { useGetUserProfileQuery } from '../store/slices/userSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Group {
