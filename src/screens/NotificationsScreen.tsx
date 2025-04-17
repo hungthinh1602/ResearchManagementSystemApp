@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +17,7 @@ import {
   useDeleteNotificationMutation,
 } from '../store/slices/notificationSlice';
 import { format } from 'date-fns';
+import { apiRequest, API_ENDPOINTS } from '../config/api';
 
 interface Notification {
   notificationId: number;
@@ -32,6 +34,7 @@ interface Notification {
 const NotificationsScreen: React.FC = () => {
   const [userId, setUserId] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const {
     data: notifications,
@@ -52,6 +55,7 @@ const NotificationsScreen: React.FC = () => {
         if (userData) {
           const parsed = JSON.parse(userData);
           setUserId(parsed.userId);
+          setAccessToken(parsed.accessToken);
         }
       } catch (error) {
         console.error('Error getting user data:', error);
@@ -69,12 +73,77 @@ const NotificationsScreen: React.FC = () => {
     }
   };
 
-  const handleDelete = async (notificationId: number) => {
-    try {
-      await deleteNotification(notificationId).unwrap();
-    } catch (error) {
-      console.error('Error deleting notification:', error);
-    }
+  const handleInvitation = async (notification: Notification) => {
+    if (!notification.invitationId || !accessToken) return;
+
+    Alert.alert(
+      'Group Invitation',
+      'Do you want to join this group?',
+      [
+        {
+          text: 'Reject',
+          onPress: async () => {
+            try {
+              const response = await apiRequest(
+                API_ENDPOINTS.INVITATIONS.REJECT(notification.invitationId),
+                { 
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                  },
+                }
+              );
+              if (response.statusCode === 200) {
+                Alert.alert('Success', 'Invitation rejected successfully');
+                refetch(); // Refresh the notifications list
+              }
+            } catch (error: any) {
+              console.error('Error rejecting invitation:', error);
+              if (error.message?.includes('already been processed')) {
+                Alert.alert(
+                  'Already Processed',
+                  'This invitation has already been handled.'
+                );
+              } else {
+                Alert.alert('Error', 'Failed to reject invitation');
+              }
+            }
+          },
+          style: 'cancel',
+        },
+        {
+          text: 'Accept',
+          onPress: async () => {
+            try {
+              const response = await apiRequest(
+                API_ENDPOINTS.INVITATIONS.ACCEPT(notification.invitationId),
+                { 
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                  },
+                }
+              );
+              if (response.statusCode === 200) {
+                Alert.alert('Success', 'You have joined the group successfully');
+                refetch(); // Refresh the notifications list
+              }
+            } catch (error: any) {
+              console.error('Error accepting invitation:', error);
+              if (error.message?.includes('already been processed')) {
+                Alert.alert(
+                  'Already Processed',
+                  'This invitation has already been handled.'
+                );
+              } else {
+                Alert.alert('Error', 'Failed to accept invitation');
+              }
+            }
+          },
+        },
+      ],
+      { cancelable: false }
+    );
   };
 
   const onRefresh = React.useCallback(async () => {
@@ -95,17 +164,16 @@ const NotificationsScreen: React.FC = () => {
           styles.notificationItem,
           !item.isRead && styles.unreadNotification,
         ]}
-        onPress={() => handleMarkAsRead(item.notificationId)}
+        onPress={() => {
+          handleMarkAsRead(item.notificationId);
+          if (item.title.includes('Group Invitation')) {
+            handleInvitation(item);
+          }
+        }}
       >
         <View style={styles.notificationContent}>
           <View style={styles.notificationHeader}>
             <Text style={styles.title}>{item.title}</Text>
-            <TouchableOpacity
-              onPress={() => handleDelete(item.notificationId)}
-              style={styles.deleteButton}
-            >
-              <Ionicons name="close-circle-outline" size={24} color="#FF3B30" />
-            </TouchableOpacity>
           </View>
           <Text style={styles.message}>{item.message}</Text>
           <Text style={styles.date}>{formattedDate}</Text>

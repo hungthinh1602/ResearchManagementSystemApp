@@ -36,7 +36,8 @@ export const notificationApiSlice = apiSlice.injectEndpoints({
     markAsRead: builder.mutation<void, number>({
       query: (notificationId: number) => ({
         url: API_ENDPOINTS.NOTIFICATIONS.MARK_AS_READ(notificationId),
-        method: 'PUT',
+        method: 'PATCH',
+        body: { isRead: true }
       }),
       invalidatesTags: ['Notifications'],
     }),
