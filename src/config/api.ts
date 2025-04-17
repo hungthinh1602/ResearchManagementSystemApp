@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 // Base API URL - using ngrok URL for development
 // export const API_BASE_URL = 'https://lrms-api-hgdyf4ere7gmbff5.canadacentral-01.azurewebsites.net';
-export const API_BASE_URL = 'https://719d-14-241-253-108.ngrok-free.app';
+export const API_BASE_URL = 'https://1064-2405-4802-a3f7-a460-c539-bcb4-b440-3ec.ngrok-free.app';
 
 // Common headers for all API requests
 export const DEFAULT_HEADERS = {
@@ -34,6 +34,11 @@ export const API_ENDPOINTS = {
     GET_PROJECT_DETAIL: (id: number) => `/api/project/details/${id}`,
     CREATE_PROJECT: '/api/project',
     DELETE_PROJECT: (id: number) => `/api/project/${id}`,
+  },
+  NOTIFICATIONS: {
+    GET_USER_NOTIFICATIONS: (userId: number) => `/api/notifications?userId=${userId}`,
+    MARK_AS_READ: (notificationId: number) => `/api/notifications/${notificationId}/read`,
+    DELETE: (notificationId: number) => `/api/notifications/${notificationId}`,
   },
 };
 

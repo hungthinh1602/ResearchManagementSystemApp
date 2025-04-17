@@ -31,6 +31,6 @@ export const apiSlice = createApi({
       return headers;
     },
   }) as BaseQueryFn,
-  tagTypes: ['UserProfile', 'Users', 'Groups', 'DepartmentUsers'] as const,
+  tagTypes: ['UserProfile', 'Users', 'Groups', 'DepartmentUsers', 'Notifications'] as const,
   endpoints: () => ({}),
 }); 
