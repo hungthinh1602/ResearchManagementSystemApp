@@ -37,8 +37,11 @@ export const API_ENDPOINTS = {
   },
   NOTIFICATIONS: {
     GET_USER_NOTIFICATIONS: (userId: number) => `/api/notifications?userId=${userId}`,
-    MARK_AS_READ: (notificationId: number) => `/api/notifications/${notificationId}/read`,
-    DELETE: (notificationId: number) => `/api/notifications/${notificationId}`,
+    MARK_AS_READ: (notificationId: number) => `/api/notifications/${notificationId}`,
+  },
+  INVITATIONS: {
+    ACCEPT: (invitationId: number) => `/api/invitations/${invitationId}/accept`,
+    REJECT: (invitationId: number) => `/api/invitations/${invitationId}/reject`,
   },
 };
 
